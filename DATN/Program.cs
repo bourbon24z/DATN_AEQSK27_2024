@@ -10,7 +10,7 @@ builder.Services.AddDbContext<StrokeDbContext>(options =>
 
 builder.Services.AddControllers();
 
-var app = builder.Build();
+    var app = builder.Build();
 
 
 if (app.Environment.IsDevelopment())

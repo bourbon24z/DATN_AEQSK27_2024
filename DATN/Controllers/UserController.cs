@@ -72,8 +72,111 @@ namespace DATN.Controllers
             {
                 return Unauthorized("Invalid username or password.");
             }
-
+            
             return Ok("Login successful.");
         }
+        //[HttpGet("user/{id}")]
+        //public async Task<IActionResult> GetUser(int id)
+        //{
+        //    try
+        //    {
+        //        var user = await _context.StrokeUsers
+        //            .Include(u => u.Patient)
+        //            .SingleOrDefaultAsync(u => u.UserId == id);
+
+        //        if (user == null)
+        //        {
+        //            return NotFound("User not found.");
+        //        }
+
+        //        var userDto = new UserDto
+        //        {
+        //            UserId = user.UserId,
+        //            Username = user.Username,
+        //            Role = user.Role,
+        //            Patient = user.Patient == null ? null : new Dto.PatientDto
+        //            {
+        //                PatientName = user.Patient.PatientName,
+        //                DateOfBirth = user.Patient.DateOfBirth,
+        //                Gender = user.Patient.Gender,
+        //                Phone = user.Patient.Phone,
+        //                Email = user.Patient.Email
+        //            }
+        //        };
+
+        //        return Ok(userDto);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, $"Internal server error: {ex.Message}");
+        //    }
+        //}
+        [HttpGet("user/{id}")]
+        public async Task<IActionResult> GetUser(int id)
+        {
+            try
+            {
+                
+                Console.WriteLine($"Received request for user with id: {id}");
+
+                var user = await _context.StrokeUsers
+                    .Include(u => u.Patient)
+                    .SingleOrDefaultAsync(u => u.UserId == id);
+
+                if (user == null)
+                {
+                    Console.WriteLine("User not found.");
+                    return NotFound("User not found.");
+                }
+
+                var userDto = new UserDto
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Role = user.Role,
+                    Patient = user.Patient == null ? null : new Dto.PatientDto
+                    {
+                        PatientName = user.Patient.PatientName,
+                        DateOfBirth = user.Patient.DateOfBirth,
+                        Gender = user.Patient.Gender,
+                        Phone = user.Patient.Phone,
+                        Email = user.Patient.Email
+                    }
+                };
+
+                Console.WriteLine("User found and returned successfully.");
+                return Ok(userDto);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Internal server error: {ex.Message}");
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+        [HttpDelete("user/{id}")]
+        public async Task<IActionResult> DeleteUser(int id)
+        {
+            try
+            {
+                var user = await _context.StrokeUsers
+                    .Include(u => u.Patient)
+                    .SingleOrDefaultAsync(u => u.UserId == id);
+
+                if (user == null)
+                {
+                    return NotFound("User not found.");
+                }
+
+                _context.StrokeUsers.Remove(user);
+                await _context.SaveChangesAsync();
+
+                return Ok("User deleted successfully.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
     }
 }
