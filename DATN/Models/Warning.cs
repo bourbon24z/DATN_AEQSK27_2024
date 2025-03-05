@@ -13,7 +13,7 @@ namespace DATN.Models
         public int WarningPatientId { get; set; }
         public int Type { get; set; }
         public string Message { get; set; }
-        public DateTime Time { get; set; }
+        public DateTimeOffset Time { get; set; }
         public string Status { get; set; }
         public Patient Patient { get; set; }
     }
