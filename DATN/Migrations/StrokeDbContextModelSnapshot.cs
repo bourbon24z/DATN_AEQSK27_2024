@@ -35,8 +35,10 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("ch_patient_id");
 
+
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
+
 
                     b.Property<string>("ProgressNotes")
                         .IsRequired()
@@ -263,6 +265,7 @@ namespace DATN.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UserVerifications");
+
                 });
 
             modelBuilder.Entity("DATN.Models.CaseHistory", b =>

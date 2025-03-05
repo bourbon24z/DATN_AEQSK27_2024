@@ -22,7 +22,7 @@ namespace DATN.Controllers
             _emailService = emailService;
         }
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+        public async Task<IActionResult> Register( RegisterDto registerDto)
         {
             if (await _context.StrokeUsers.AnyAsync(u => u.Username == registerDto.Username))
             {
@@ -105,8 +105,30 @@ namespace DATN.Controllers
             return Ok("Email verified and registration successful.");
         }
 
+		[HttpPut("patient/{userId}")]
+		public async Task<IActionResult> UpdatePatient([FromRoute] int userId, [FromBody] PatientDto patientDto)
+		{
+			var dbUser = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
+			if (dbUser == null)
+			{
+				return NotFound("User not found.");
+			}
+			var dbPatient = await _context.Patients.FirstOrDefaultAsync(p => p.PatientId == dbUser.UserPatientId);
+			if (dbPatient == null)
+			{
+				return NotFound("User not found.");
+			}
 
-        [HttpPost("login")]
+			dbPatient.PatientName = patientDto.PatientName;
+			dbPatient.DateOfBirth = patientDto.DateOfBirth;
+			dbPatient.Gender = patientDto.Gender;
+			dbPatient.Phone = patientDto.Phone;
+			dbPatient.Email = patientDto.Email;
+			await _context.SaveChangesAsync();
+			return Ok(patientDto);
+		}
+
+		[HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             var dbUser = await _context.StrokeUsers
@@ -119,6 +141,7 @@ namespace DATN.Controllers
             
             return Ok("Login successful.");
         }
+
         [HttpGet("user/{id}")]
         public async Task<IActionResult> GetUser(int id)
         {
