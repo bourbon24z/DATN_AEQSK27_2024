@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using DATN.Models;
+using DATN.Verification;
 
 namespace DATN.Data
 {
@@ -15,6 +16,11 @@ namespace DATN.Data
         public DbSet<CaseHistory> CaseHistories { get; set; }
         public DbSet<Warning> Warnings { get; set; }
         public DbSet<MedicalInformation> MedicalInformations { get; set; }
+
+        public DbSet<UserVerification> UserVerifications { get; set; }
+
+        public DbSet<UserRegistrationTemp> UserRegistrationTemps { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -86,6 +92,48 @@ namespace DATN.Data
                 .WithMany()
                 .HasForeignKey(m => m.MiPatientId)
                 .HasConstraintName("FK_MedicalInformation_Patient_MiPatientId");
+            modelBuilder.Entity<UserRegistrationTemp>().ToTable("UserRegistrationTemp");
+
+            modelBuilder.Entity<UserRegistrationTemp>()
+                .Property(u => u.Id)
+                .HasColumnName("id");
+
+            modelBuilder.Entity<UserRegistrationTemp>()
+                .Property(u => u.Username)
+                .HasColumnName("username")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            modelBuilder.Entity<UserRegistrationTemp>()
+                .Property(u => u.Password)
+                .HasColumnName("password")
+                .HasMaxLength(255)
+                .IsRequired();
+
+            modelBuilder.Entity<UserRegistrationTemp>()
+                .Property(u => u.Role)
+                .HasColumnName("role")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            modelBuilder.Entity<UserRegistrationTemp>()
+                .Property(u => u.Email)
+                .HasColumnName("email")
+                .HasMaxLength(50)
+                .IsRequired();
+
+            modelBuilder.Entity<UserRegistrationTemp>()
+                .Property(u => u.Otp)
+                .HasColumnName("otp")
+                .HasMaxLength(10)
+                .IsRequired();
+
+            modelBuilder.Entity<UserRegistrationTemp>()
+                .Property(u => u.OtpExpiry)
+                .HasColumnName("otp_expiry")
+                .HasColumnType("datetimeoffset")
+                .IsRequired();
+
         }
     }
 }

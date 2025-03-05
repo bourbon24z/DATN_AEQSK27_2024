@@ -10,7 +10,7 @@ namespace DATN.Models
         [Column("case_history_id")]
         public int CaseHistoryId { get; set; }
         public required string ProgressNotes { get; set; }
-        public DateTime Time { get; set; }
+        public DateTimeOffset Time { get; set; }
         public required string StatusOfMr { get; set; }
         [Column("ch_patient_id")]
         public int ChPatientId { get; set; }

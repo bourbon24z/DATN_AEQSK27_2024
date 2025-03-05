@@ -4,6 +4,7 @@ using DATN.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DATN.Migrations
 {
     [DbContext(typeof(StrokeDbContext))]
-    partial class StrokeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250304042906_SyncDatabase")]
+    partial class SyncDatabase
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -35,10 +38,8 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("ch_patient_id");
 
-
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
-
 
                     b.Property<string>("ProgressNotes")
                         .IsRequired()
@@ -265,7 +266,6 @@ namespace DATN.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("UserVerifications");
-
                 });
 
             modelBuilder.Entity("DATN.Models.CaseHistory", b =>

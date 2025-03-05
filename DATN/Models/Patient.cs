@@ -14,7 +14,7 @@ namespace DATN.Models
         public string PatientName { get; set; }
 
         [Column("date_of_birth")]
-        public DateTime DateOfBirth { get; set; }
+        public DateTimeOffset DateOfBirth { get; set; }
 
         [Column("gender")]
         public bool Gender { get; set; }
@@ -26,7 +26,7 @@ namespace DATN.Models
         public string Email { get; set; }
 
         [Column("created_at")]
-        public DateTime CreatedAt { get; set; } 
+        public DateTimeOffset CreatedAt { get; set; } 
     }
 }
 
