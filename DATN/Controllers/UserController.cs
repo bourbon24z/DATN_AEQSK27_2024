@@ -19,7 +19,7 @@ namespace DATN.Controllers
             _context = context;
         }
         [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
+        public async Task<IActionResult> Register( RegisterDto registerDto)
         {
             if (await _context.StrokeUsers.AnyAsync(u => u.Username == registerDto.Username))
             {
@@ -61,8 +61,30 @@ namespace DATN.Controllers
             return Ok("Registration successful.");
         }
 
+		[HttpPut("patient/{userId}")]
+		public async Task<IActionResult> UpdatePatient([FromRoute] int userId, [FromBody] PatientDto patientDto)
+		{
+			var dbUser = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
+			if (dbUser == null)
+			{
+				return NotFound("User not found.");
+			}
+			var dbPatient = await _context.Patients.FirstOrDefaultAsync(p => p.PatientId == dbUser.UserPatientId);
+			if (dbPatient == null)
+			{
+				return NotFound("User not found.");
+			}
 
-        [HttpPost("login")]
+			dbPatient.PatientName = patientDto.PatientName;
+			dbPatient.DateOfBirth = patientDto.DateOfBirth;
+			dbPatient.Gender = patientDto.Gender;
+			dbPatient.Phone = patientDto.Phone;
+			dbPatient.Email = patientDto.Email;
+			await _context.SaveChangesAsync();
+			return Ok(patientDto);
+		}
+
+		[HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             var dbUser = await _context.StrokeUsers
@@ -75,42 +97,7 @@ namespace DATN.Controllers
             
             return Ok("Login successful.");
         }
-        //[HttpGet("user/{id}")]
-        //public async Task<IActionResult> GetUser(int id)
-        //{
-        //    try
-        //    {
-        //        var user = await _context.StrokeUsers
-        //            .Include(u => u.Patient)
-        //            .SingleOrDefaultAsync(u => u.UserId == id);
 
-        //        if (user == null)
-        //        {
-        //            return NotFound("User not found.");
-        //        }
-
-        //        var userDto = new UserDto
-        //        {
-        //            UserId = user.UserId,
-        //            Username = user.Username,
-        //            Role = user.Role,
-        //            Patient = user.Patient == null ? null : new Dto.PatientDto
-        //            {
-        //                PatientName = user.Patient.PatientName,
-        //                DateOfBirth = user.Patient.DateOfBirth,
-        //                Gender = user.Patient.Gender,
-        //                Phone = user.Patient.Phone,
-        //                Email = user.Patient.Email
-        //            }
-        //        };
-
-        //        return Ok(userDto);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, $"Internal server error: {ex.Message}");
-        //    }
-        //}
         [HttpGet("user/{id}")]
         public async Task<IActionResult> GetUser(int id)
         {

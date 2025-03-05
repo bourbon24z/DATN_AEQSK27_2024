@@ -7,8 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<StrokeDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
+builder.Services.AddSwaggerGen();
 
     var app = builder.Build();
 
@@ -16,6 +17,8 @@ builder.Services.AddControllers();
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();

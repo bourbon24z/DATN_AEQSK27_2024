@@ -26,12 +26,14 @@ namespace DATN.Migrations
                 {
                     b.Property<int>("CaseHistoryId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("case_history_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CaseHistoryId"));
 
-                    b.Property<int>("PatientId")
-                        .HasColumnType("int");
+                    b.Property<int>("ChPatientId")
+                        .HasColumnType("int")
+                        .HasColumnName("ch_patient_id");
 
                     b.Property<string>("ProgressNotes")
                         .IsRequired()
@@ -46,18 +48,19 @@ namespace DATN.Migrations
 
                     b.HasKey("CaseHistoryId");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("ChPatientId");
 
-                    b.ToTable("CaseHistories");
+                    b.ToTable("CaseHistory", (string)null);
                 });
 
             modelBuilder.Entity("DATN.Models.MedicalInformation", b =>
                 {
-                    b.Property<int>("MedicalInformationId")
+                    b.Property<int>("MedicalInforId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("medical_infor_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MedicalInformationId"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MedicalInforId"));
 
                     b.Property<float>("DiastolicPressure")
                         .HasColumnType("real");
@@ -69,6 +72,10 @@ namespace DATN.Migrations
                     b.Property<float>("HeartRate")
                         .HasColumnType("real");
 
+                    b.Property<int>("MiPatientId")
+                        .HasColumnType("int")
+                        .HasColumnName("mi_patient_id");
+
                     b.Property<int>("PatientId")
                         .HasColumnType("int");
 
@@ -78,87 +85,101 @@ namespace DATN.Migrations
                     b.Property<float>("SystolicPressure")
                         .HasColumnType("real");
 
-                    b.HasKey("MedicalInformationId");
+                    b.HasKey("MedicalInforId");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("MiPatientId");
 
-                    b.ToTable("MedicalInformations");
+                    b.ToTable("Medical_Information", (string)null);
                 });
 
             modelBuilder.Entity("DATN.Models.Patient", b =>
                 {
                     b.Property<int>("PatientId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("patient_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PatientId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at");
+
                     b.Property<DateTime>("DateOfBirth")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime2")
+                        .HasColumnName("date_of_birth");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("email");
 
                     b.Property<bool>("Gender")
-                        .HasColumnType("bit");
+                        .HasColumnType("bit")
+                        .HasColumnName("gender");
 
                     b.Property<string>("PatientName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("patient_name");
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("phone");
 
                     b.HasKey("PatientId");
 
-                    b.ToTable("Patients");
+                    b.ToTable("Patient", (string)null);
                 });
 
             modelBuilder.Entity("DATN.Models.StrokeUser", b =>
                 {
                     b.Property<int>("UserId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
 
                     b.Property<string>("Password")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("password");
 
-                    b.Property<int>("PatientId")
-                        .HasColumnType("int");
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("role");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("int");
+                    b.Property<int>("UserPatientId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_patient_id");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("username");
 
                     b.HasKey("UserId");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("UserPatientId");
 
-                    b.ToTable("StrokeUsers");
+                    b.ToTable("StrokeUser", (string)null);
                 });
 
             modelBuilder.Entity("DATN.Models.Warning", b =>
                 {
                     b.Property<int>("WarningId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("warning_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WarningId"));
 
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("PatientId")
-                        .HasColumnType("int");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -170,20 +191,25 @@ namespace DATN.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
+                    b.Property<int>("WarningPatientId")
+                        .HasColumnType("int")
+                        .HasColumnName("warning_patient_id");
+
                     b.HasKey("WarningId");
 
-                    b.HasIndex("PatientId");
+                    b.HasIndex("WarningPatientId");
 
-                    b.ToTable("Warnings");
+                    b.ToTable("Warning", (string)null);
                 });
 
             modelBuilder.Entity("DATN.Models.CaseHistory", b =>
                 {
                     b.HasOne("DATN.Models.Patient", "Patient")
                         .WithMany()
-                        .HasForeignKey("PatientId")
+                        .HasForeignKey("ChPatientId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("FK_CaseHistory_Patient_ChPatientId");
 
                     b.Navigation("Patient");
                 });
@@ -192,9 +218,10 @@ namespace DATN.Migrations
                 {
                     b.HasOne("DATN.Models.Patient", "Patient")
                         .WithMany()
-                        .HasForeignKey("PatientId")
+                        .HasForeignKey("MiPatientId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("FK_MedicalInformation_Patient_MiPatientId");
 
                     b.Navigation("Patient");
                 });
@@ -203,7 +230,7 @@ namespace DATN.Migrations
                 {
                     b.HasOne("DATN.Models.Patient", "Patient")
                         .WithMany()
-                        .HasForeignKey("PatientId")
+                        .HasForeignKey("UserPatientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -214,9 +241,10 @@ namespace DATN.Migrations
                 {
                     b.HasOne("DATN.Models.Patient", "Patient")
                         .WithMany()
-                        .HasForeignKey("PatientId")
+                        .HasForeignKey("WarningPatientId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .IsRequired()
+                        .HasConstraintName("FK_Warning_Patient_WarningPatientId");
 
                     b.Navigation("Patient");
                 });
