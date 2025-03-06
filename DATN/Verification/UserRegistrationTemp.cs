@@ -9,6 +9,6 @@
         public string Role { get; set; }
         public string Email { get; set; }
         public string Otp { get; set; }
-        public DateTimeOffset OtpExpiry { get; set; }
+        public DateTime OtpExpiry { get; set; }
     }
 }

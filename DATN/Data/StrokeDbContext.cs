@@ -131,7 +131,7 @@ namespace DATN.Data
             modelBuilder.Entity<UserRegistrationTemp>()
                 .Property(u => u.OtpExpiry)
                 .HasColumnName("otp_expiry")
-                .HasColumnType("datetimeoffset")
+                .HasColumnType("datetime")
                 .IsRequired();
 
         }

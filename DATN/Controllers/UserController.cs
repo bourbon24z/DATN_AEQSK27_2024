@@ -30,7 +30,7 @@ namespace DATN.Controllers
             }
             //otp
             var otp = new Random().Next(100000, 999999).ToString();
-            var otpExpiry = DateTimeOffset.UtcNow.AddMinutes(15);
+            var otpExpiry = DateTime.UtcNow.AddMinutes(15);
 
             // save cache infor dto
             var tempUser = new UserRegistrationTemp
@@ -56,7 +56,7 @@ namespace DATN.Controllers
             var tempUser = await _context.UserRegistrationTemps
                 .SingleOrDefaultAsync(u => u.Email == verifyOtpDto.Email && u.Otp == verifyOtpDto.Otp);
 
-            if (tempUser == null || tempUser.OtpExpiry.AddMinutes(1) < DateTimeOffset.UtcNow) // Sử dụng DateTimeOffset
+            if (tempUser == null || tempUser.OtpExpiry < DateTime.UtcNow) 
             {
                 return BadRequest("Invalid or expired OTP.");
             }

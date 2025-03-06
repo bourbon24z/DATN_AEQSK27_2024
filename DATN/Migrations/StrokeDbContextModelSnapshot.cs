@@ -3,7 +3,6 @@ using System;
 using DATN.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -17,10 +16,8 @@ namespace DATN.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.2")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
-
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+                .HasAnnotation("ProductVersion", "6.0.0")
+                .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             modelBuilder.Entity("DATN.Models.CaseHistory", b =>
                 {
@@ -29,27 +26,20 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("case_history_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CaseHistoryId"));
-
                     b.Property<int>("ChPatientId")
                         .HasColumnType("int")
                         .HasColumnName("ch_patient_id");
 
-
-                    b.Property<int>("PatientId")
-                        .HasColumnType("int");
-
-
                     b.Property<string>("ProgressNotes")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("StatusOfMr")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("Time")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("Time")
+                        .HasColumnType("datetime(6)");
 
                     b.HasKey("CaseHistoryId");
 
@@ -65,17 +55,15 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("medical_infor_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("MedicalInforId"));
-
                     b.Property<float>("DiastolicPressure")
-                        .HasColumnType("real");
+                        .HasColumnType("float");
 
                     b.Property<string>("GPS")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
                     b.Property<float>("HeartRate")
-                        .HasColumnType("real");
+                        .HasColumnType("float");
 
                     b.Property<int>("MiPatientId")
                         .HasColumnType("int")
@@ -85,10 +73,10 @@ namespace DATN.Migrations
                         .HasColumnType("int");
 
                     b.Property<float>("Spo2Information")
-                        .HasColumnType("real");
+                        .HasColumnType("float");
 
                     b.Property<float>("SystolicPressure")
-                        .HasColumnType("real");
+                        .HasColumnType("float");
 
                     b.HasKey("MedicalInforId");
 
@@ -104,33 +92,31 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("patient_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PatientId"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetime(6)")
                         .HasColumnName("created_at");
 
-                    b.Property<DateTime>("DateOfBirth")
-                        .HasColumnType("datetime2")
+                    b.Property<DateTimeOffset>("DateOfBirth")
+                        .HasColumnType("datetime(6)")
                         .HasColumnName("date_of_birth");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("longtext")
                         .HasColumnName("email");
 
                     b.Property<bool>("Gender")
-                        .HasColumnType("bit")
+                        .HasColumnType("tinyint(1)")
                         .HasColumnName("gender");
 
                     b.Property<string>("PatientName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("longtext")
                         .HasColumnName("patient_name");
 
                     b.Property<string>("Phone")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("longtext")
                         .HasColumnName("phone");
 
                     b.HasKey("PatientId");
@@ -145,16 +131,14 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("user_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("UserId"));
-
                     b.Property<string>("Password")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("longtext")
                         .HasColumnName("password");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("longtext")
                         .HasColumnName("role");
 
                     b.Property<int>("UserPatientId")
@@ -163,7 +147,7 @@ namespace DATN.Migrations
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("longtext")
                         .HasColumnName("username");
 
                     b.HasKey("UserId");
@@ -180,18 +164,16 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("warning_id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("WarningId"));
-
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
-                    b.Property<DateTime>("Time")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("Time")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -211,36 +193,46 @@ namespace DATN.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("email");
 
                     b.Property<string>("Otp")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(10)
+                        .HasColumnType("varchar(10)")
+                        .HasColumnName("otp");
 
                     b.Property<DateTime>("OtpExpiry")
-                        .HasColumnType("datetime2");
+                        .HasColumnType("datetime")
+                        .HasColumnName("otp_expiry");
 
                     b.Property<string>("Password")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("password");
 
                     b.Property<string>("Role")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("role");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("username");
 
                     b.HasKey("Id");
 
-                    b.ToTable("UserRegistrationTemps");
+                    b.ToTable("UserRegistrationTemp", (string)null);
                 });
 
             modelBuilder.Entity("DATN.Verification.UserVerification", b =>
@@ -249,23 +241,20 @@ namespace DATN.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
                     b.Property<bool>("IsVerified")
-                        .HasColumnType("bit");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("VerificationCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("longtext");
 
                     b.HasKey("Id");
 
                     b.ToTable("UserVerifications");
-
                 });
 
             modelBuilder.Entity("DATN.Models.CaseHistory", b =>
