@@ -12,6 +12,7 @@ namespace DATN.Models
         public required string ProgressNotes { get; set; }
         public DateTimeOffset Time { get; set; }
         public required string StatusOfMr { get; set; }
+       
         [Column("ch_patient_id")]
         public int ChPatientId { get; set; }
         public required Patient Patient { get; set; }
