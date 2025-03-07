@@ -12,7 +12,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<EmailService>();
-
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5062); // Lắng nghe trên cổng 5062
+});
 
     var app = builder.Build();
 
@@ -24,7 +27,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
+
+

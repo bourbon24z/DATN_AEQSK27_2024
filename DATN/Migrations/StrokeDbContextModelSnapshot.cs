@@ -3,6 +3,7 @@ using System;
 using DATN.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -16,8 +17,10 @@ namespace DATN.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "6.0.0")
+                .HasAnnotation("ProductVersion", "8.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
+
+            MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
 
             modelBuilder.Entity("DATN.Models.CaseHistory", b =>
                 {
@@ -25,6 +28,8 @@ namespace DATN.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("case_history_id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("CaseHistoryId"));
 
                     b.Property<int>("ChPatientId")
                         .HasColumnType("int")
@@ -54,6 +59,8 @@ namespace DATN.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("medical_infor_id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("MedicalInforId"));
 
                     b.Property<float>("DiastolicPressure")
                         .HasColumnType("float");
@@ -91,6 +98,8 @@ namespace DATN.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("patient_id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("PatientId"));
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetime(6)")
@@ -131,6 +140,8 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("user_id");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("UserId"));
+
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("longtext")
@@ -164,6 +175,8 @@ namespace DATN.Migrations
                         .HasColumnType("int")
                         .HasColumnName("warning_id");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("WarningId"));
+
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -195,6 +208,8 @@ namespace DATN.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int")
                         .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -240,6 +255,8 @@ namespace DATN.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Email")
                         .IsRequired()

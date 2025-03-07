@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace DATN.Migrations
 {
+    /// <inheritdoc />
     public partial class InitialCreate : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterDatabase()
@@ -202,6 +204,7 @@ namespace DATN.Migrations
                 column: "warning_patient_id");
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
