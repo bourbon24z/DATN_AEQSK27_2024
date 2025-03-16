@@ -14,7 +14,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<EmailService>();
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5062); // Lắng nghe trên cổng 5062
+    options.ListenAnyIP(5062); 
 });
 
     var app = builder.Build();

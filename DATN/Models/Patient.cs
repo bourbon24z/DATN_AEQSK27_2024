@@ -26,7 +26,8 @@ namespace DATN.Models
         public string Email { get; set; }
 
         [Column("created_at")]
-        public DateTimeOffset CreatedAt { get; set; } 
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public DateTime CreatedAt { get; set; } 
     }
 }
 

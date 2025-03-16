@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DATN.Models
 {
@@ -9,12 +10,20 @@ namespace DATN.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("warning_id")]
         public int WarningId { get; set; }
-        [Column("warning_patient_id")]
-        public int WarningPatientId { get; set; }
-        public int Type { get; set; }
-        public string Message { get; set; }
-        public DateTimeOffset Time { get; set; }
-        public string Status { get; set; }
-        public Patient Patient { get; set; }
+
+        [Column("description")]
+        public string Description { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; }
+
+        [Column("is_active")]
+        public bool IsActive { get; set; }
+
+        [Column("user_id")]
+        public int UserId { get; set; }
+
+        [ForeignKey("UserId")]
+        public StrokeUser StrokeUser { get; set; }
     }
 }

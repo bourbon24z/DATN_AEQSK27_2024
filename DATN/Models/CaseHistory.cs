@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DATN.Models
 {
@@ -9,13 +10,20 @@ namespace DATN.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Column("case_history_id")]
         public int CaseHistoryId { get; set; }
-        public required string ProgressNotes { get; set; }
-        public DateTimeOffset Time { get; set; }
-        public required string StatusOfMr { get; set; }
-       
-        [Column("ch_patient_id")]
-        public int ChPatientId { get; set; }
-        public required Patient Patient { get; set; }
 
+        [Column("progress_notes")]
+        public string ProgressNotes { get; set; }
+
+        [Column("time")]
+        public DateTime Time { get; set; }
+
+        [Column("status_of_mr")]
+        public string StatusOfMr { get; set; }
+
+        [Column("user_id")]
+        public int UserId { get; set; }
+
+        [ForeignKey("UserId")]
+        public StrokeUser StrokeUser { get; set; }
     }
 }

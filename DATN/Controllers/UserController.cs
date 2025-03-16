@@ -21,114 +21,150 @@ namespace DATN.Controllers
             _context = context;
             _emailService = emailService;
         }
-        [HttpPost("register")]
-        public async Task<IActionResult> Register( RegisterDto registerDto)
-        {
-            if (await _context.StrokeUsers.AnyAsync(u => u.Username == registerDto.Username))
-            {
-                return BadRequest("Username already exists.");
-            }
-            //otp
-            var otp = new Random().Next(100000, 999999).ToString();
-            var otpExpiry = DateTime.UtcNow.AddMinutes(15);
 
-            // save cache infor dto
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterUserDto registerUserDto)
+        {
             var tempUser = new UserRegistrationTemp
             {
-                Username = registerDto.Username,
-                Password = BCrypt.Net.BCrypt.HashPassword(registerDto.Password),
-                Role = registerDto.Role,
-                Email = registerDto.Patient.Email,
-                Otp = otp,
-                OtpExpiry = otpExpiry
+                Username = registerUserDto.Username,
+                Password = BCrypt.Net.BCrypt.HashPassword(registerUserDto.Password),
+                Role = registerUserDto.Role,
+                Email = registerUserDto.Email,
+                Otp = new Random().Next(100000, 999999).ToString(),
+                OtpExpiry = DateTime.UtcNow.AddMinutes(15),
+                PatientName = registerUserDto.PatientName,
+                DateOfBirth = registerUserDto.DateOfBirth,
+                Gender = registerUserDto.Gender,
+                Phone = registerUserDto.Phone
             };
 
             _context.UserRegistrationTemps.Add(tempUser);
             await _context.SaveChangesAsync();
 
-            await _emailService.SendEmailAsync(registerDto.Patient.Email, "OTP Confirmation", $"Your OTP is: {otp}");
+            // Gửi OTP qua email
+            await _emailService.SendEmailAsync(registerUserDto.Email, "OTP Confirmation", $"Your OTP is: {tempUser.Otp}");
 
             return Ok("OTP has been sent to your email. Please verify.");
         }
+
         [HttpPost("verifyotp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto verifyOtpDto)
         {
             var tempUser = await _context.UserRegistrationTemps
                 .SingleOrDefaultAsync(u => u.Email == verifyOtpDto.Email && u.Otp == verifyOtpDto.Otp);
 
-            if (tempUser == null || tempUser.OtpExpiry < DateTime.UtcNow) 
+            if (tempUser == null || tempUser.OtpExpiry < DateTime.UtcNow)
             {
                 return BadRequest("Invalid or expired OTP.");
             }
 
-            // check infor patient
-            var patient = await _context.Patients.FirstOrDefaultAsync(p => p.Email == tempUser.Email);
-            if (patient == null)
-            {
-                patient = new Patient
-                {
-                    PatientName = verifyOtpDto.PatientName,
-                    DateOfBirth = verifyOtpDto.DateOfBirth,
-                    Gender = verifyOtpDto.Gender,
-                    Phone = verifyOtpDto.Phone,
-                    Email = tempUser.Email,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-
-                _context.Patients.Add(patient);
-                await _context.SaveChangesAsync();
-            }
-
-            //add patient before user
-            patient = await _context.Patients.FirstOrDefaultAsync(p => p.Email == tempUser.Email);
-            if (patient == null)
-            {
-                return StatusCode(500, "Failed to create patient record.");
-            }
-
-            // new stroke user
             var user = new StrokeUser
             {
                 Username = tempUser.Username,
                 Password = tempUser.Password,
                 Role = tempUser.Role,
-                UserPatientId = patient.PatientId
+                PatientName = tempUser.PatientName,
+                DateOfBirth = tempUser.DateOfBirth,
+                Gender = tempUser.Gender,
+                Phone = tempUser.Phone,
+                Email = tempUser.Email,
+                CreatedAt = DateTime.UtcNow,
+                IsVerified = true
             };
 
             _context.StrokeUsers.Add(user);
             await _context.SaveChangesAsync();
 
-            // remove cached temp user
+            // remove temp user
             _context.UserRegistrationTemps.Remove(tempUser);
             await _context.SaveChangesAsync();
 
             return Ok("Email verified and registration successful.");
         }
 
-		[HttpPut("patient/{userId}")]
-		public async Task<IActionResult> UpdatePatient([FromRoute] int userId, [FromBody] PatientDto patientDto)
-		{
-			var dbUser = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
-			if (dbUser == null)
-			{
-				return NotFound("User not found.");
-			}
-			var dbPatient = await _context.Patients.FirstOrDefaultAsync(p => p.PatientId == dbUser.UserPatientId);
-			if (dbPatient == null)
-			{
-				return NotFound("User not found.");
-			}
+        [HttpPost("registercontact")]
+        public async Task<IActionResult> RegisterContact([FromBody] RegisterContactDto registerContactDto)
+        {
+            var patient = await _context.StrokeUsers
+                .SingleOrDefaultAsync(u => u.Email == registerContactDto.PatientEmail && u.Role == "Patient");
 
-			dbPatient.PatientName = patientDto.PatientName;
-			dbPatient.DateOfBirth = patientDto.DateOfBirth;
-			dbPatient.Gender = patientDto.Gender;
-			dbPatient.Phone = patientDto.Phone;
-			dbPatient.Email = patientDto.Email;
-			await _context.SaveChangesAsync();
-			return Ok(patientDto);
-		}
+            if (patient == null)
+            {
+                return BadRequest("Patient not found.");
+            }
 
-		[HttpPost("login")]
+            var tempContact = new ContactRegistrationTemp
+            {
+                Name = registerContactDto.Name,
+                Relationship = registerContactDto.Relationship,
+                Phone = registerContactDto.Phone,
+                Email = registerContactDto.Email,
+                PatientEmail = registerContactDto.PatientEmail,
+                Password = BCrypt.Net.BCrypt.HashPassword(registerContactDto.Password),
+                Otp = new Random().Next(100000, 999999).ToString(),
+                OtpExpiry = DateTime.UtcNow.AddMinutes(15) 
+            };
+
+            _context.ContactRegistrationTemps.Add(tempContact);
+            await _context.SaveChangesAsync();
+
+            await _emailService.SendEmailAsync(registerContactDto.Email, "OTP Confirmation", $"Your OTP is: {tempContact.Otp}");
+
+            return Ok("OTP has been sent to the contact's email. Please ask the contact to verify.");
+        }
+
+        [HttpPost("verifycontactotp")]
+        public async Task<IActionResult> VerifyContactOtp([FromBody] VerifyOtpDto verifyOtpDto)
+        {
+            var tempContact = await _context.ContactRegistrationTemps
+                .SingleOrDefaultAsync(c => c.Email == verifyOtpDto.Email && c.Otp == verifyOtpDto.Otp);
+
+            if (tempContact == null)
+            {
+                return BadRequest(new { message = "Invalid OTP.", details = "OTP or email does not match." });
+            }
+
+            if (tempContact.OtpExpiry < DateTime.UtcNow)
+            {
+                return BadRequest(new { message = "Expired OTP.", details = $"OTP expired at {tempContact.OtpExpiry}, current time is {DateTime.UtcNow}." });
+            }
+
+            var contact = new Contact
+            {
+                Name = tempContact.Name,
+                Relationship = tempContact.Relationship,
+                Phone = tempContact.Phone,
+                Email = tempContact.Email
+            };
+
+            _context.Contacts.Add(contact);
+            await _context.SaveChangesAsync();
+
+            var patientUser = await _context.StrokeUsers.SingleOrDefaultAsync(u => u.Email == tempContact.PatientEmail);
+            if (patientUser == null)
+            {
+                return BadRequest(new { message = "Patient not found.", details = "Email of the patient does not match." });
+            }
+
+            var contactPatient = new ContactPatient
+            {
+                ContactId = contact.ContactId,
+                UserId = patientUser.UserId 
+            };
+
+            _context.ContactPatients.Add(contactPatient);
+            await _context.SaveChangesAsync();
+
+            _context.ContactRegistrationTemps.Remove(tempContact);
+            await _context.SaveChangesAsync();
+
+            return Ok("Contact account verified and activated successfully.");
+        }
+
+
+
+        [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             var dbUser = await _context.StrokeUsers
@@ -138,7 +174,7 @@ namespace DATN.Controllers
             {
                 return Unauthorized("Invalid username or password.");
             }
-            
+
             return Ok("Login successful.");
         }
 
@@ -147,11 +183,9 @@ namespace DATN.Controllers
         {
             try
             {
-                
                 Console.WriteLine($"Received request for user with id: {id}");
 
                 var user = await _context.StrokeUsers
-                    .Include(u => u.Patient)
                     .SingleOrDefaultAsync(u => u.UserId == id);
 
                 if (user == null)
@@ -165,14 +199,11 @@ namespace DATN.Controllers
                     UserId = user.UserId,
                     Username = user.Username,
                     Role = user.Role,
-                    Patient = user.Patient == null ? null : new Dto.PatientDto
-                    {
-                        PatientName = user.Patient.PatientName,
-                        DateOfBirth = user.Patient.DateOfBirth,
-                        Gender = user.Patient.Gender,
-                        Phone = user.Patient.Phone,
-                        Email = user.Patient.Email
-                    }
+                    PatientName = user.PatientName,
+                    DateOfBirth = user.DateOfBirth,
+                    Gender = user.Gender,
+                    Phone = user.Phone,
+                    Email = user.Email
                 };
 
                 Console.WriteLine("User found and returned successfully.");
@@ -184,13 +215,13 @@ namespace DATN.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
+
         [HttpDelete("user/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
             try
             {
                 var user = await _context.StrokeUsers
-                    .Include(u => u.Patient)
                     .SingleOrDefaultAsync(u => u.UserId == id);
 
                 if (user == null)
@@ -208,21 +239,5 @@ namespace DATN.Controllers
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
-        [HttpGet("confirmemail")]
-        public async Task<IActionResult> ConfirmEmail(string code)
-        {
-            var verification = await _context.UserVerifications.SingleOrDefaultAsync(v => v.VerificationCode == code);
-            if (verification == null)
-            {
-                return NotFound("Invalid verification code.");
-            }
-
-            verification.IsVerified = true;
-            await _context.SaveChangesAsync();
-
-            return Ok("Email confirmed successfully.");
-        }
     }
-
 }
-

@@ -4,12 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DATN.Models
 {
-    public class StrokeUser
+    public class UserRegistrationTemp
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Column("user_id")]
-        public int UserId { get; set; }
+        [Column("id")]
+        public int Id { get; set; }
 
         [Column("username")]
         public string Username { get; set; }
@@ -19,6 +19,15 @@ namespace DATN.Models
 
         [Column("role")]
         public string Role { get; set; }
+
+        [Column("email")]
+        public string Email { get; set; }
+
+        [Column("otp")]
+        public string Otp { get; set; }
+
+        [Column("otp_expiry")]
+        public DateTime OtpExpiry { get; set; }
 
         [Column("patient_name")]
         public string PatientName { get; set; }
@@ -31,14 +40,5 @@ namespace DATN.Models
 
         [Column("phone")]
         public string Phone { get; set; }
-
-        [Column("email")]
-        public string Email { get; set; }
-
-        [Column("created_at")]
-        public DateTime CreatedAt { get; set; }
-
-        [Column("is_verified")]
-        public bool IsVerified { get; set; }
     }
 }
