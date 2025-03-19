@@ -36,7 +36,7 @@ namespace DATN.Controllers
                       u.Username == registerUserDto.Username);
             if (existingUser != null)
             {
-                return BadRequest("Mail hoặc sdt tồn tại rồi fennn, m tính mạo danh à!!!! Kao báo ông can còng đầu chết cụ m nháaaaa");
+                return BadRequest("Mail hoặc sdt hoặc username tồn tại rồi fennn, m tính mạo danh à!!!! Kao báo ông can còng đầu chết cụ m nháaaaa");
             }
 
             var tempUser = new UserRegistrationTemp
