@@ -1,4 +1,4 @@
-﻿namespace DATN.Dto
+﻿ namespace DATN.Dto
 {
     public class PatientDto
     {

@@ -5,7 +5,7 @@ namespace DATN.Dto
     public class LoginDto
     {
         [Required]
-        public string Username { get; set; }
+        public string Credential { get; set; }
 
         [Required]
         public string Password { get; set; }
