@@ -6,6 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using BCrypt.Net;
 using DATN.Verification;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace DATN.Controllers
 {
@@ -98,86 +102,6 @@ namespace DATN.Controllers
             return Ok("Email verified and registration successful.");
         }
 
-        //[HttpPost("registercontact")]
-        //public async Task<IActionResult> RegisterContact([FromBody] RegisterContactDto registerContactDto)
-        //{
-        //    var patient = await _context.StrokeUsers
-        //        .SingleOrDefaultAsync(u => u.Email == registerContactDto.PatientEmail && u.Role == "Patient");
-
-        //    if (patient == null)
-        //    {
-        //        return BadRequest("Patient not found.");
-        //    }
-
-        //    var tempContact = new ContactRegistrationTemp
-        //    {
-        //        Name = registerContactDto.Name,
-        //        Relationship = registerContactDto.Relationship,
-        //        Phone = registerContactDto.Phone,
-        //        Email = registerContactDto.Email,
-        //        PatientEmail = registerContactDto.PatientEmail,
-        //        Password = BCrypt.Net.BCrypt.HashPassword(registerContactDto.Password),
-        //        Otp = new Random().Next(100000, 999999).ToString(),
-        //        OtpExpiry = DateTime.UtcNow.AddMinutes(15) 
-        //    };
-
-        //    _context.ContactRegistrationTemps.Add(tempContact);
-        //    await _context.SaveChangesAsync();
-
-        //    await _emailService.SendEmailAsync(registerContactDto.Email, "OTP Confirmation", $"Your OTP is: {tempContact.Otp}");
-
-        //    return Ok("OTP has been sent to the contact's email. Please ask the contact to verify.");
-        //}
-
-        //[HttpPost("verifycontactotp")]
-        //public async Task<IActionResult> VerifyContactOtp([FromBody] VerifyOtpDto verifyOtpDto)
-        //{
-        //    var tempContact = await _context.ContactRegistrationTemps
-        //        .SingleOrDefaultAsync(c => c.Email == verifyOtpDto.Email && c.Otp == verifyOtpDto.Otp);
-
-        //    if (tempContact == null)
-        //    {
-        //        return BadRequest(new { message = "Invalid OTP.", details = "OTP or email does not match." });
-        //    }
-
-        //    if (tempContact.OtpExpiry < DateTime.UtcNow)
-        //    {
-        //        return BadRequest(new { message = "Expired OTP.", details = $"OTP expired at {tempContact.OtpExpiry}, current time is {DateTime.UtcNow}." });
-        //    }
-
-        //    var contact = new Contact
-        //    {
-        //        Name = tempContact.Name,
-        //        Relationship = tempContact.Relationship,
-        //        Phone = tempContact.Phone,
-        //        Email = tempContact.Email
-        //    };
-
-        //    _context.Contacts.Add(contact);
-        //    await _context.SaveChangesAsync();
-
-        //    var patientUser = await _context.StrokeUsers.SingleOrDefaultAsync(u => u.Email == tempContact.PatientEmail);
-        //    if (patientUser == null)
-        //    {
-        //        return BadRequest(new { message = "Patient not found.", details = "Email of the patient does not match." });
-        //    }
-
-        //    var contactPatient = new ContactPatient
-        //    {
-        //        ContactId = contact.ContactId,
-        //        UserId = patientUser.UserId 
-        //    };
-
-        //    _context.ContactPatients.Add(contactPatient);
-        //    await _context.SaveChangesAsync();
-
-        //    _context.ContactRegistrationTemps.Remove(tempContact);
-        //    await _context.SaveChangesAsync();
-
-        //    return Ok("Contact account verified and activated successfully.");
-        //}
-
-
 
         [HttpPost("login")]
         //http://localhost:5062/api/User/login
@@ -193,6 +117,22 @@ namespace DATN.Controllers
             {
                 return Unauthorized("Invalid username or password.");
             }
+            
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes("huynguyencutephomaiquenhatthegioi12345!");
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+            new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString())
+        }),
+                Expires = DateTime.UtcNow.AddHours(1),
+                Issuer = "localhost:5062",
+                Audience = "localhost:5062",
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var tokenString = tokenHandler.WriteToken(token);
             var userDto = new UserDto
             {
                 UserId = dbUser.UserId,
@@ -202,13 +142,20 @@ namespace DATN.Controllers
                 DateOfBirth = dbUser.DateOfBirth,
                 Gender = dbUser.Gender,
                 Phone = dbUser.Phone,
-                Email = dbUser.Email
+                Email = dbUser.Email,
+                Token = tokenString
             };
             return Ok(new
             {
-                message = "Login successful.",
+                message = "Login successfully.",
+                //token = tokenHandler.WriteToken(token),
                 data = userDto
-            }); 
+            });
+            //return Ok(new
+            //{
+            //    message = "Login successful.",
+            //    data = userDto
+            //}); 
         }
 
         [HttpGet("user/{id}")]

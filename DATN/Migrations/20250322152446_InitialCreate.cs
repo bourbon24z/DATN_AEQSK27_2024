@@ -16,55 +16,6 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "contact",
-                columns: table => new
-                {
-                    contact_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    name = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    relationship = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    phone = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    email = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_contact", x => x.contact_id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "contact_registration_temp",
-                columns: table => new
-                {
-                    id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    name = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    relationship = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    phone = table.Column<string>(type: "varchar(20)", maxLength: 20, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    email = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    patient_email = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    password = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    otp = table.Column<string>(type: "varchar(10)", maxLength: 10, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    otp_expiry = table.Column<DateTime>(type: "datetime", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_contact_registration_temp", x => x.id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "stroke_user",
                 columns: table => new
                 {
@@ -167,26 +118,25 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "contact_patient",
+                name: "InvitationCodes",
                 columns: table => new
                 {
-                    contact_patient_id = table.Column<int>(type: "int", nullable: false)
+                    InvitationId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    contact_id = table.Column<int>(type: "int", nullable: false),
-                    user_id = table.Column<int>(type: "int", nullable: false)
+                    Code = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    InviterUserId = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_contact_patient", x => x.contact_patient_id);
+                    table.PrimaryKey("PK_InvitationCodes", x => x.InvitationId);
                     table.ForeignKey(
-                        name: "FK_contact_patient_contact_contact_id",
-                        column: x => x.contact_id,
-                        principalTable: "contact",
-                        principalColumn: "contact_id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_contact_patient_stroke_user_user_id",
-                        column: x => x.user_id,
+                        name: "FK_InvitationCodes_stroke_user_InviterUserId",
+                        column: x => x.InviterUserId,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -213,6 +163,35 @@ namespace DATN.Migrations
                     table.ForeignKey(
                         name: "FK_MedicalInformation_StrokeUser_UserId",
                         column: x => x.user_id,
+                        principalTable: "stroke_user",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "Relationships",
+                columns: table => new
+                {
+                    RelationshipId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    InviterId = table.Column<int>(type: "int", nullable: false),
+                    RelationshipType = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Relationships", x => x.RelationshipId);
+                    table.ForeignKey(
+                        name: "FK_Relationships_stroke_user_InviterId",
+                        column: x => x.InviterId,
+                        principalTable: "stroke_user",
+                        principalColumn: "user_id");
+                    table.ForeignKey(
+                        name: "FK_Relationships_stroke_user_UserId",
+                        column: x => x.UserId,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -249,19 +228,24 @@ namespace DATN.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_contact_patient_contact_id",
-                table: "contact_patient",
-                column: "contact_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_contact_patient_user_id",
-                table: "contact_patient",
-                column: "user_id");
+                name: "IX_InvitationCodes_InviterUserId",
+                table: "InvitationCodes",
+                column: "InviterUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_medical_information_user_id",
                 table: "medical_information",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Relationships_InviterId",
+                table: "Relationships",
+                column: "InviterId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Relationships_UserId",
+                table: "Relationships",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_warning_user_id",
@@ -276,13 +260,13 @@ namespace DATN.Migrations
                 name: "case_history");
 
             migrationBuilder.DropTable(
-                name: "contact_patient");
-
-            migrationBuilder.DropTable(
-                name: "contact_registration_temp");
+                name: "InvitationCodes");
 
             migrationBuilder.DropTable(
                 name: "medical_information");
+
+            migrationBuilder.DropTable(
+                name: "Relationships");
 
             migrationBuilder.DropTable(
                 name: "user_registration_temp");
@@ -292,9 +276,6 @@ namespace DATN.Migrations
 
             migrationBuilder.DropTable(
                 name: "warning");
-
-            migrationBuilder.DropTable(
-                name: "contact");
 
             migrationBuilder.DropTable(
                 name: "stroke_user");

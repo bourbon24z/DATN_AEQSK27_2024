@@ -40,5 +40,9 @@ namespace DATN.Models
 
         [Column("is_verified")]
         public bool IsVerified { get; set; }
+
+        public ICollection<InvitationCode> InvitationCodes { get; set; }
+
+        public ICollection<Relationship> Relationships { get; set; }    
     }
 }

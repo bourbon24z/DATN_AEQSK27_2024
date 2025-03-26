@@ -10,16 +10,15 @@ namespace DATN.Data
             : base(options)
         {
         }
-
         public DbSet<StrokeUser> StrokeUsers { get; set; }
-        public DbSet<Contact> Contacts { get; set; }
         public DbSet<Warning> Warnings { get; set; }
         public DbSet<MedicalInformation> MedicalInformations { get; set; }
         public DbSet<CaseHistory> CaseHistories { get; set; }
         public DbSet<UserVerification> UserVerifications { get; set; }
         public DbSet<UserRegistrationTemp> UserRegistrationTemps { get; set; }
-        public DbSet<ContactRegistrationTemp> ContactRegistrationTemps { get; set; }
-        public DbSet<ContactPatient> ContactPatients { get; set; }
+        public DbSet<InvitationCode> InvitationCodes { get; set; }
+        public DbSet<Relationship> Relationships { get; set; }
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -32,26 +31,6 @@ namespace DATN.Data
                 .Property(u => u.IsVerified)
                 .HasColumnName("is_verified")
                 .HasDefaultValue(false);
-
-            modelBuilder.Entity<Contact>().ToTable("contact");
-            modelBuilder.Entity<Contact>()
-                .Property(c => c.ContactId)
-                .HasColumnName("contact_id");
-
-            modelBuilder.Entity<ContactPatient>().ToTable("contact_patient");
-            modelBuilder.Entity<ContactPatient>()
-                .Property(cp => cp.ContactPatientId)
-                .HasColumnName("contact_patient_id");
-
-            modelBuilder.Entity<ContactPatient>()
-                .HasOne(cp => cp.Contact)
-                .WithMany()
-                .HasForeignKey(cp => cp.ContactId);
-
-            modelBuilder.Entity<ContactPatient>()
-                .HasOne(cp => cp.StrokeUser)
-                .WithMany()
-                .HasForeignKey(cp => cp.UserId);
 
             modelBuilder.Entity<Warning>().ToTable("warning");
             modelBuilder.Entity<Warning>()
@@ -139,58 +118,33 @@ namespace DATN.Data
                 .HasColumnType("datetime")
                 .IsRequired();
 
-            modelBuilder.Entity<ContactRegistrationTemp>().ToTable("contact_registration_temp");
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.Id)
-                .HasColumnName("id");
+           
+            modelBuilder.Entity<InvitationCode>(entity =>
+            {
+                entity.HasKey(i => i.InvitationId); 
 
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.Name)
-                .HasColumnName("name")
-                .HasMaxLength(100)
-                .IsRequired();
+                entity.HasOne(ic => ic.InviterUser) 
+                      .WithMany(u => u.InvitationCodes)
+                      .HasForeignKey(ic => ic.InviterUserId)
+                      .OnDelete(DeleteBehavior.Cascade); 
+            });
 
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.Relationship)
-                .HasColumnName("relationship")
-                .HasMaxLength(50)
-                .IsRequired();
 
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.Phone)
-                .HasColumnName("phone")
-                .HasMaxLength(20)
-                .IsRequired();
+            modelBuilder.Entity<Relationship>(entity =>
+            {
+                entity.HasKey(r => r.RelationshipId); 
 
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.Email)
-                .HasColumnName("email")
-                .HasMaxLength(100)
-                .IsRequired();
+                entity.HasOne(r => r.User)
+                      .WithMany(u => u.Relationships)
+                      .HasForeignKey(r => r.UserId)
+                      .OnDelete(DeleteBehavior.Cascade); 
 
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.PatientEmail)
-                .HasColumnName("patient_email")
-                .HasMaxLength(100)
-                .IsRequired();
+                entity.HasOne(r => r.Inviter) 
+                      .WithMany() 
+                      .HasForeignKey(r => r.InviterId)
+                      .OnDelete(DeleteBehavior.NoAction);
+            });
 
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.Password)
-                .HasColumnName("password")
-                .HasMaxLength(255)
-                .IsRequired();
-
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.Otp)
-                .HasColumnName("otp")
-                .HasMaxLength(10)
-                .IsRequired();
-
-            modelBuilder.Entity<ContactRegistrationTemp>()
-                .Property(c => c.OtpExpiry)
-                .HasColumnName("otp_expiry")
-                .HasColumnType("datetime")
-                .IsRequired();
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

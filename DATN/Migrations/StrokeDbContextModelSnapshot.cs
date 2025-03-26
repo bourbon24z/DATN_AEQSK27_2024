@@ -56,124 +56,36 @@ namespace DATN.Migrations
                     b.ToTable("case_history", (string)null);
                 });
 
-            modelBuilder.Entity("DATN.Models.Contact", b =>
+            modelBuilder.Entity("DATN.Models.InvitationCode", b =>
                 {
-                    b.Property<int>("ContactId")
+                    b.Property<int>("InvitationId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("contact_id");
+                        .HasColumnType("int");
 
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ContactId"));
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("InvitationId"));
 
-                    b.Property<string>("Email")
+                    b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("email");
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("Name")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("InviterUserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("name");
+                        .HasColumnType("longtext");
 
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("phone");
+                    b.HasKey("InvitationId");
 
-                    b.Property<string>("Relationship")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("relationship");
+                    b.HasIndex("InviterUserId");
 
-                    b.HasKey("ContactId");
-
-                    b.ToTable("contact", (string)null);
-                });
-
-            modelBuilder.Entity("DATN.Models.ContactPatient", b =>
-                {
-                    b.Property<int>("ContactPatientId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("contact_patient_id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ContactPatientId"));
-
-                    b.Property<int>("ContactId")
-                        .HasColumnType("int")
-                        .HasColumnName("contact_id");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("ContactPatientId");
-
-                    b.HasIndex("ContactId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("contact_patient", (string)null);
-                });
-
-            modelBuilder.Entity("DATN.Models.ContactRegistrationTemp", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("email");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("name");
-
-                    b.Property<string>("Otp")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("varchar(10)")
-                        .HasColumnName("otp");
-
-                    b.Property<DateTime>("OtpExpiry")
-                        .HasColumnType("datetime")
-                        .HasColumnName("otp_expiry");
-
-                    b.Property<string>("Password")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("password");
-
-                    b.Property<string>("PatientEmail")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("patient_email");
-
-                    b.Property<string>("Phone")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("varchar(20)")
-                        .HasColumnName("phone");
-
-                    b.Property<string>("Relationship")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("relationship");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("contact_registration_temp", (string)null);
+                    b.ToTable("InvitationCodes");
                 });
 
             modelBuilder.Entity("DATN.Models.MedicalInformation", b =>
@@ -215,6 +127,36 @@ namespace DATN.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("medical_information", (string)null);
+                });
+
+            modelBuilder.Entity("DATN.Models.Relationship", b =>
+                {
+                    b.Property<int>("RelationshipId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("RelationshipId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("InviterId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelationshipType")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("RelationshipId");
+
+                    b.HasIndex("InviterId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Relationships");
                 });
 
             modelBuilder.Entity("DATN.Models.StrokeUser", b =>
@@ -414,23 +356,15 @@ namespace DATN.Migrations
                     b.Navigation("StrokeUser");
                 });
 
-            modelBuilder.Entity("DATN.Models.ContactPatient", b =>
+            modelBuilder.Entity("DATN.Models.InvitationCode", b =>
                 {
-                    b.HasOne("DATN.Models.Contact", "Contact")
-                        .WithMany()
-                        .HasForeignKey("ContactId")
+                    b.HasOne("DATN.Models.StrokeUser", "InviterUser")
+                        .WithMany("InvitationCodes")
+                        .HasForeignKey("InviterUserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Contact");
-
-                    b.Navigation("StrokeUser");
+                    b.Navigation("InviterUser");
                 });
 
             modelBuilder.Entity("DATN.Models.MedicalInformation", b =>
@@ -445,6 +379,25 @@ namespace DATN.Migrations
                     b.Navigation("StrokeUser");
                 });
 
+            modelBuilder.Entity("DATN.Models.Relationship", b =>
+                {
+                    b.HasOne("DATN.Models.StrokeUser", "Inviter")
+                        .WithMany()
+                        .HasForeignKey("InviterId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("DATN.Models.StrokeUser", "User")
+                        .WithMany("Relationships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inviter");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DATN.Models.Warning", b =>
                 {
                     b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
@@ -455,6 +408,13 @@ namespace DATN.Migrations
                         .HasConstraintName("FK_Warning_StrokeUser_UserId");
 
                     b.Navigation("StrokeUser");
+                });
+
+            modelBuilder.Entity("DATN.Models.StrokeUser", b =>
+                {
+                    b.Navigation("InvitationCodes");
+
+                    b.Navigation("Relationships");
                 });
 #pragma warning restore 612, 618
         }
