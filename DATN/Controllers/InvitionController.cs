@@ -26,7 +26,7 @@ namespace DATN.Controllers
         {
             var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
-            // Kiểm tra xem user có tồn tại không
+            // check exist user
             var inviterExists = await _dBContext.StrokeUsers.AnyAsync(u => u.UserId == currentUserId);
             if (!inviterExists)
             {
@@ -89,3 +89,5 @@ namespace DATN.Controllers
 
     }
 }
+
+

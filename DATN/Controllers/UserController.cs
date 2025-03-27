@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DATN.Controllers
 {
@@ -228,6 +229,38 @@ namespace DATN.Controllers
                 return StatusCode(500, "Internal server error occurred.");
             }
         }
+        //http://localhost:5062/api/User/update-basic-info
+        [HttpPut("update-basic-info")]
+        [Authorize]
+        public async Task<IActionResult> UpdateBasicInfo([FromBody] UpdateBasicInfoDto updateBasicInfoDto)
+        {
+            // get user data JWT
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var dbUser = await _context.StrokeUsers.FindAsync(userId);
+
+            if (dbUser == null)
+            {
+                return NotFound("User not found.");
+            }
+
+            // put info
+            dbUser.PatientName = updateBasicInfoDto.PatientName ?? dbUser.PatientName;
+            dbUser.DateOfBirth = updateBasicInfoDto.DateOfBirth != default ? updateBasicInfoDto.DateOfBirth : dbUser.DateOfBirth;
+            dbUser.Gender = updateBasicInfoDto.Gender;
+
+            await _context.SaveChangesAsync();
+            return Ok(new
+            {
+                message = "Basic information updated successfully.",
+                data = new
+                {
+                    dbUser.PatientName,
+                    dbUser.DateOfBirth,
+                    dbUser.Gender
+                }
+            });
+        }
+
 
         [HttpDelete("user/{id}")]
         //http://localhost:5062/api/User/user/{id}
@@ -248,7 +281,7 @@ namespace DATN.Controllers
 
                 return Ok("User deleted successfully.");
             }
-            catch (Exception ex)
+            catch (Exception ex)    
             {
                 return StatusCode(500, $"Internal server error: {ex.Message}");
             }
