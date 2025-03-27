@@ -19,6 +19,7 @@ public class OtpController : ControllerBase
         _context = context;
         _emailService = emailService;
     }
+    [NonAction]
     public async Task CreateAndSendOtpAsync(int userId, string email, string verificationType)
     {
         
