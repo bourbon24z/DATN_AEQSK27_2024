@@ -16,12 +16,6 @@ namespace DATN.Models
         [Column("heart_rate")]
         public float HeartRate { get; set; }
 
-        [Column("systolic_pressure")]
-        public float SystolicPressure { get; set; }
-
-        [Column("diastolic_pressure")]
-        public float DiastolicPressure { get; set; }
-
         [Column("gps")]
         public string GPS { get; set; }
 

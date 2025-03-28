@@ -16,6 +16,23 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "Device",
+                columns: table => new
+                {
+                    DeviceId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    DeviceName = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    DeviceType = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Device", x => x.DeviceId);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "stroke_user",
                 columns: table => new
                 {
@@ -80,10 +97,12 @@ namespace DATN.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    UserId = table.Column<int>(type: "int", nullable: false),
                     Email = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     VerificationCode = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
+                    OtpExpiry = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     IsVerified = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
@@ -111,6 +130,38 @@ namespace DATN.Migrations
                     table.ForeignKey(
                         name: "FK_CaseHistory_StrokeUser_UserId",
                         column: x => x.user_id,
+                        principalTable: "stroke_user",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "HealthMetric",
+                columns: table => new
+                {
+                    HealthMetricId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    DeviceId = table.Column<int>(type: "int", nullable: false),
+                    SystolicPressure = table.Column<float>(type: "float", nullable: false),
+                    DiastolicPressure = table.Column<float>(type: "float", nullable: false),
+                    Temperature = table.Column<float>(type: "float", nullable: false),
+                    BloodPh = table.Column<float>(type: "float", nullable: false),
+                    RecordedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_HealthMetric", x => x.HealthMetricId);
+                    table.ForeignKey(
+                        name: "FK_HealthMetric_Device_DeviceId",
+                        column: x => x.DeviceId,
+                        principalTable: "Device",
+                        principalColumn: "DeviceId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_HealthMetric_stroke_user_UserId",
+                        column: x => x.UserId,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -151,8 +202,6 @@ namespace DATN.Migrations
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
                     spo2_information = table.Column<float>(type: "float", nullable: false),
                     heart_rate = table.Column<float>(type: "float", nullable: false),
-                    systolic_pressure = table.Column<float>(type: "float", nullable: false),
-                    diastolic_pressure = table.Column<float>(type: "float", nullable: false),
                     gps = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     user_id = table.Column<int>(type: "int", nullable: false)
@@ -228,6 +277,17 @@ namespace DATN.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_HealthMetric_DeviceId",
+                table: "HealthMetric",
+                column: "DeviceId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_HealthMetric_UserId",
+                table: "HealthMetric",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_InvitationCodes_InviterUserId",
                 table: "InvitationCodes",
                 column: "InviterUserId");
@@ -260,6 +320,9 @@ namespace DATN.Migrations
                 name: "case_history");
 
             migrationBuilder.DropTable(
+                name: "HealthMetric");
+
+            migrationBuilder.DropTable(
                 name: "InvitationCodes");
 
             migrationBuilder.DropTable(
@@ -276,6 +339,9 @@ namespace DATN.Migrations
 
             migrationBuilder.DropTable(
                 name: "warning");
+
+            migrationBuilder.DropTable(
+                name: "Device");
 
             migrationBuilder.DropTable(
                 name: "stroke_user");

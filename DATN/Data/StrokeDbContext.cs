@@ -18,6 +18,8 @@ namespace DATN.Data
         public DbSet<UserRegistrationTemp> UserRegistrationTemps { get; set; }
         public DbSet<InvitationCode> InvitationCodes { get; set; }
         public DbSet<Relationship> Relationships { get; set; }
+        public DbSet<HealthMetric> HealthMetric { get; set; }
+        public DbSet<Device> Device { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -144,7 +146,15 @@ namespace DATN.Data
                       .HasForeignKey(r => r.InviterId)
                       .OnDelete(DeleteBehavior.NoAction);
             });
+            modelBuilder.Entity<HealthMetric>()
+                       .HasOne(h => h.Device)
+                       .WithOne(d => d.HealthMetric)
+                       .HasForeignKey<HealthMetric>(h => h.DeviceId);
 
+            modelBuilder.Entity<HealthMetric>()
+                    .HasOne(h => h.StrokeUser)
+                    .WithMany(s => s.HealthMetrics)
+                    .HasForeignKey(h => h.UserId);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

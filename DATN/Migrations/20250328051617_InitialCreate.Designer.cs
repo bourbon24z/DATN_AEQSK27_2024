@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DATN.Migrations
 {
     [DbContext(typeof(StrokeDbContext))]
-    [Migration("20250326115605_OtpExpiryToUserVerification")]
-    partial class OtpExpiryToUserVerification
+    [Migration("20250328051617_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -59,6 +59,27 @@ namespace DATN.Migrations
                     b.ToTable("case_history", (string)null);
                 });
 
+            modelBuilder.Entity("DATN.Models.Device", b =>
+                {
+                    b.Property<int>("DeviceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("DeviceId"));
+
+                    b.Property<string>("DeviceName")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("DeviceType")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("DeviceId");
+
+                    b.ToTable("Device");
+                });
+
             modelBuilder.Entity("DATN.Models.InvitationCode", b =>
                 {
                     b.Property<int>("InvitationId")
@@ -100,10 +121,6 @@ namespace DATN.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("MedicalInforId"));
 
-                    b.Property<float>("DiastolicPressure")
-                        .HasColumnType("float")
-                        .HasColumnName("diastolic_pressure");
-
                     b.Property<string>("GPS")
                         .IsRequired()
                         .HasColumnType("longtext")
@@ -116,10 +133,6 @@ namespace DATN.Migrations
                     b.Property<float>("Spo2Information")
                         .HasColumnType("float")
                         .HasColumnName("spo2_information");
-
-                    b.Property<float>("SystolicPressure")
-                        .HasColumnType("float")
-                        .HasColumnName("systolic_pressure");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int")
@@ -353,6 +366,45 @@ namespace DATN.Migrations
                     b.ToTable("UserVerifications");
                 });
 
+            modelBuilder.Entity("HealthMetric", b =>
+                {
+                    b.Property<int>("HealthMetricId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("HealthMetricId"));
+
+                    b.Property<float>("BloodPh")
+                        .HasColumnType("float");
+
+                    b.Property<int>("DeviceId")
+                        .HasColumnType("int");
+
+                    b.Property<float>("DiastolicPressure")
+                        .HasColumnType("float");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<float>("SystolicPressure")
+                        .HasColumnType("float");
+
+                    b.Property<float>("Temperature")
+                        .HasColumnType("float");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("HealthMetricId");
+
+                    b.HasIndex("DeviceId")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("HealthMetric");
+                });
+
             modelBuilder.Entity("DATN.Models.CaseHistory", b =>
                 {
                     b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
@@ -419,8 +471,35 @@ namespace DATN.Migrations
                     b.Navigation("StrokeUser");
                 });
 
+            modelBuilder.Entity("HealthMetric", b =>
+                {
+                    b.HasOne("DATN.Models.Device", "Device")
+                        .WithOne("HealthMetric")
+                        .HasForeignKey("HealthMetric", "DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany("HealthMetrics")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Device");
+
+                    b.Navigation("StrokeUser");
+                });
+
+            modelBuilder.Entity("DATN.Models.Device", b =>
+                {
+                    b.Navigation("HealthMetric")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DATN.Models.StrokeUser", b =>
                 {
+                    b.Navigation("HealthMetrics");
+
                     b.Navigation("InvitationCodes");
 
                     b.Navigation("Relationships");
