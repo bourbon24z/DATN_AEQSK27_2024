@@ -17,9 +17,6 @@ namespace DATN.Models
         [Column("password")]
         public string Password { get; set; }
 
-        [Column("role")]
-        public string Role { get; set; }
-
         [Column("email")]
         public string Email { get; set; }
 

@@ -17,9 +17,6 @@ namespace DATN.Models
         [Column("password")]
         public string Password { get; set; }
 
-        [Column("role")]
-        public string Role { get; set; }
-
         [Column("patient_name")]
         public string PatientName { get; set; }
 
@@ -45,6 +42,8 @@ namespace DATN.Models
 
         public ICollection<InvitationCode> InvitationCodes { get; set; }
 
-        public ICollection<Relationship> Relationships { get; set; }    
+        public ICollection<Relationship> Relationships { get; set; }
+
+        public ICollection<UserRole> UserRoles { get; set; }
     }
 }

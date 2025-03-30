@@ -20,6 +20,8 @@ namespace DATN.Data
         public DbSet<Relationship> Relationships { get; set; }
         public DbSet<HealthMetric> HealthMetric { get; set; }
         public DbSet<Device> Device { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -96,12 +98,7 @@ namespace DATN.Data
                 .HasMaxLength(255)
                 .IsRequired();
 
-            modelBuilder.Entity<UserRegistrationTemp>()
-                .Property(u => u.Role)
-                .HasColumnName("role")
-                .HasMaxLength(50)
-                .IsRequired();
-
+        
             modelBuilder.Entity<UserRegistrationTemp>()
                 .Property(u => u.Email)
                 .HasColumnName("email")
@@ -155,6 +152,28 @@ namespace DATN.Data
                     .HasOne(h => h.StrokeUser)
                     .WithMany(s => s.HealthMetrics)
                     .HasForeignKey(h => h.UserId);
+            modelBuilder.Entity<UserRole>()
+                    .HasOne(ur => ur.StrokeUser)
+                    .WithMany(su => su.UserRoles)
+                    .HasForeignKey(ur => ur.UserId);
+            modelBuilder.Entity<UserRole>()
+                    .HasKey(ur => ur.UserRoleId);
+
+            modelBuilder.Entity<UserRole>()
+                    .HasOne(ur => ur.StrokeUser)
+                    .WithMany(su => su.UserRoles)
+                    .HasForeignKey(ur => ur.UserId);
+
+            modelBuilder.Entity<UserRole>()
+                    .HasOne(ur => ur.Role)
+                    .WithMany(r => r.UserRoles)
+                    .HasForeignKey(ur => ur.RoleId);
+
+            modelBuilder.Entity<Role>()
+                    .Property(r => r.RoleName)
+                    .HasMaxLength(50)
+                    .IsRequired();
+            base.OnModelCreating(modelBuilder);
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

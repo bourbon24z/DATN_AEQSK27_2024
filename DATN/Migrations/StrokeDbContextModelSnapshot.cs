@@ -172,6 +172,24 @@ namespace DATN.Migrations
                     b.ToTable("Relationships");
                 });
 
+            modelBuilder.Entity("DATN.Models.Role", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("RoleId"));
+
+                    b.Property<string>("RoleName")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("RoleId");
+
+                    b.ToTable("Roles");
+                });
+
             modelBuilder.Entity("DATN.Models.StrokeUser", b =>
                 {
                     b.Property<int>("UserId")
@@ -218,11 +236,6 @@ namespace DATN.Migrations
                         .IsRequired()
                         .HasColumnType("longtext")
                         .HasColumnName("phone");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("role");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -283,12 +296,6 @@ namespace DATN.Migrations
                         .HasColumnType("longtext")
                         .HasColumnName("phone");
 
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)")
-                        .HasColumnName("role");
-
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -298,6 +305,35 @@ namespace DATN.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("user_registration_temp", (string)null);
+                });
+
+            modelBuilder.Entity("DATN.Models.UserRole", b =>
+                {
+                    b.Property<int>("UserRoleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("UserRoleId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserRoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserRoles");
                 });
 
             modelBuilder.Entity("DATN.Models.Warning", b =>
@@ -456,6 +492,25 @@ namespace DATN.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("DATN.Models.UserRole", b =>
+                {
+                    b.HasOne("DATN.Models.Role", "Role")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany("UserRoles")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Role");
+
+                    b.Navigation("StrokeUser");
+                });
+
             modelBuilder.Entity("DATN.Models.Warning", b =>
                 {
                     b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
@@ -493,6 +548,11 @@ namespace DATN.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("DATN.Models.Role", b =>
+                {
+                    b.Navigation("UserRoles");
+                });
+
             modelBuilder.Entity("DATN.Models.StrokeUser", b =>
                 {
                     b.Navigation("HealthMetrics");
@@ -500,6 +560,8 @@ namespace DATN.Migrations
                     b.Navigation("InvitationCodes");
 
                     b.Navigation("Relationships");
+
+                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

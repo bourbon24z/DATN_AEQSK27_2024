@@ -4,7 +4,6 @@ public class RegisterUserDto
 {
     public string Username { get; set; }
     public string Password { get; set; }
-    public string Role { get; set; }
     public string PatientName { get; set; }
     public DateTime DateOfBirth { get; set; }
     public bool Gender { get; set; }

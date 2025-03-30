@@ -28,27 +28,35 @@ namespace DATN.Controllers
         }
 
         [HttpPost("register")]
-        //http://localhost:5062/api/User/register
         public async Task<IActionResult> Register([FromBody] RegisterUserDto registerUserDto)
         {
-            var existingUser = await _context.StrokeUsers.SingleOrDefaultAsync(u =>
-                      u.Email ==  registerUserDto.Email ||
-                      u.Phone ==  registerUserDto.Phone ||
-                      u.Username == registerUserDto.Username);
-            await _context.UserRegistrationTemps.AnyAsync(u =>
-                      u.Email == registerUserDto.Email || 
-                      u.Phone == registerUserDto.Phone ||
-                      u.Username == registerUserDto.Username);
+            
+            var existingUser = await _context.StrokeUsers
+                .Where(u => u.Email == registerUserDto.Email || u.Phone == registerUserDto.Phone || u.Username == registerUserDto.Username)
+                .Select(u => new
+                {
+                    EmailExists = u.Email == registerUserDto.Email,
+                    PhoneExists = u.Phone == registerUserDto.Phone,
+                    UsernameExists = u.Username == registerUserDto.Username
+                })
+                .FirstOrDefaultAsync();
+
+            
             if (existingUser != null)
             {
-                return BadRequest("Mail hoặc sdt hoặc username tồn tại rồi fennn, m tính mạo danh à!!!! Kao báo ông can còng đầu chết cụ m nháaaaa");
+                var errors = new List<string>();
+                if (existingUser.EmailExists) errors.Add("Email đã tồn tại.");
+                if (existingUser.PhoneExists) errors.Add("Số điện thoại đã tồn tại.");
+                if (existingUser.UsernameExists) errors.Add("Username đã tồn tại.");
+
+                return BadRequest(string.Join(" ", errors)); 
             }
 
+            // Tạo người dùng tạm thời nếu không có lỗi
             var tempUser = new UserRegistrationTemp
             {
                 Username = registerUserDto.Username,
                 Password = BCrypt.Net.BCrypt.HashPassword(registerUserDto.Password),
-                Role = registerUserDto.Role,
                 Email = registerUserDto.Email,
                 Otp = new Random().Next(100000, 999999).ToString(),
                 OtpExpiry = DateTime.UtcNow.AddMinutes(15),
@@ -61,14 +69,14 @@ namespace DATN.Controllers
             _context.UserRegistrationTemps.Add(tempUser);
             await _context.SaveChangesAsync();
 
-            // send otp to email
+            
             await _emailService.SendEmailAsync(registerUserDto.Email, "OTP Confirmation", $"Your OTP is: {tempUser.Otp}");
 
-            return Ok("OTP has been sent to your email. Please verify.");
+            return Ok("OTP đã được gửi đến email của bạn. Vui lòng xác nhận.");
         }
 
+
         [HttpPost("verifyotp")]
-        //http://localhost:5062/api/user/verifyotp
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto verifyOtpDto)
         {
             var tempUser = await _context.UserRegistrationTemps
@@ -76,14 +84,13 @@ namespace DATN.Controllers
 
             if (tempUser == null || tempUser.OtpExpiry < DateTime.UtcNow)
             {
-                return BadRequest("Invalid or expired OTP.");
+                return BadRequest("OTP không hợp lệ hoặc đã hết hạn.");
             }
 
-            var user = new StrokeUser
+            var newUser = new StrokeUser
             {
                 Username = tempUser.Username,
                 Password = tempUser.Password,
-                Role = tempUser.Role,
                 PatientName = tempUser.PatientName,
                 DateOfBirth = tempUser.DateOfBirth,
                 Gender = tempUser.Gender,
@@ -92,142 +99,80 @@ namespace DATN.Controllers
                 CreatedAt = DateTime.UtcNow,
                 IsVerified = true
             };
-
-            _context.StrokeUsers.Add(user);
+            _context.StrokeUsers.Add(newUser);
             await _context.SaveChangesAsync();
 
-            // remove temp user
+            
+            var userRole = await _context.Roles.SingleOrDefaultAsync(r => r.RoleName == "user");
+            if (userRole != null)
+            {
+                var newUserRole = new UserRole
+                {
+                    UserId = newUser.UserId,
+                    RoleId = userRole.RoleId,
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                };
+                _context.UserRoles.Add(newUserRole);
+                await _context.SaveChangesAsync();
+            }
+
             _context.UserRegistrationTemps.Remove(tempUser);
             await _context.SaveChangesAsync();
 
-            return Ok("Email verified and registration successful.");
+            return Ok("Email đã được xác minh và đăng ký thành công.");
         }
-
-
         [HttpPost("login")]
-        //http://localhost:5062/api/User/login
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             var dbUser = await _context.StrokeUsers
                 .SingleOrDefaultAsync(u =>
-                u.Username == loginDto.Credential ||
-                u.Email == loginDto.Credential ||
-                u.Phone == loginDto.Credential);
+                    u.Username == loginDto.Credential ||
+                    u.Email == loginDto.Credential ||
+                    u.Phone == loginDto.Credential);
 
             if (dbUser == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, dbUser.Password))
             {
-                return Unauthorized("Invalid username or password.");
+                return Unauthorized("Username hoặc mật khẩu không đúng.");
             }
-            
+
+            var roles = await _context.UserRoles
+                .Where(ur => ur.UserId == dbUser.UserId && ur.IsActive)
+                .Select(ur => ur.Role.RoleName)
+                .ToListAsync();
+
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes("huynguyencutephomaiquenhatthegioi12345!");
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-            new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString())
+            new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString()),
+            new Claim(ClaimTypes.Role, string.Join(",", roles))
         }),
                 Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = "localhost:5062",
                 Audience = "localhost:5062",
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
+
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
-            var userDto = new UserDto
-            {
-                UserId = dbUser.UserId,
-                Username = dbUser.Username,
-                Role = dbUser.Role,
-                PatientName = dbUser.PatientName,
-                DateOfBirth = dbUser.DateOfBirth,
-                Gender = dbUser.Gender,
-                Phone = dbUser.Phone,
-                Email = dbUser.Email,
-                Token = tokenString
-            };
+
             return Ok(new
             {
-                message = "Login successfully.",
-                //token = tokenHandler.WriteToken(token),
-                data = userDto
-            });
-            //return Ok(new
-            //{
-            //    message = "Login successful.",
-            //    data = userDto
-            //}); 
-        }
-
-        [HttpGet("user/{id}")]
-        //http://localhost:5062/api/User/user/{id}
-        public async Task<IActionResult> GetUser(int id)
-        {
-            try
-            {
-                Console.WriteLine($"Received request for user with id: {id}");
-
-                var user = await _context.StrokeUsers
-                    .SingleOrDefaultAsync(u => u.UserId == id);
-
-                if (user == null)
+                message = "Đăng nhập thành công.",
+                data = new
                 {
-                    Console.WriteLine("User not found.");
-                    return NotFound("User not found.");
+                    dbUser.UserId,
+                    dbUser.Username,
+                    dbUser.DateOfBirth,
+                    dbUser.Email,
+                    dbUser.Gender,
+                    dbUser.Phone,
+                    Roles = roles,
+                    Token = tokenHandler.WriteToken(token)
                 }
-
-                var userDto = new UserDto
-                {
-                    UserId = user.UserId,
-                    Username = user.Username,
-                    Role = user.Role,
-                    PatientName = user.PatientName,
-                    DateOfBirth = user.DateOfBirth,
-                    Gender = user.Gender,
-                    Phone = user.Phone,
-                    Email = user.Email
-                };
-
-                Console.WriteLine("User found and returned successfully.");
-                return Ok(userDto);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Internal server error: {ex.Message}");
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
-        }
-
-        [HttpGet("users")]
-        //http://localhost:5062/api/User/users
-        public async Task<IActionResult> GetAllUsers()
-        {
-            try
-            {
-                
-                var users = await _context.StrokeUsers.ToListAsync();
-
-                
-                var userDtos = users.Select(user => new UserDto
-                {
-                    UserId = user.UserId,
-                    Username = user.Username,
-                    Role = user.Role,
-                    PatientName = user.PatientName,
-                    DateOfBirth = user.DateOfBirth,
-                    Gender = user.Gender,
-                    Phone = user.Phone,
-                    Email = user.Email
-                }).ToList();
-
-                return Ok(userDtos); 
-            }
-            catch (Exception ex)
-            {
-                
-                Console.WriteLine($"Error fetching users: {ex.Message}");
-                return StatusCode(500, "Internal server error occurred.");
-            }
+            });
         }
         //http://localhost:5062/api/User/update-basic-info
         [HttpPut("update-basic-info")]
@@ -259,32 +204,6 @@ namespace DATN.Controllers
                     dbUser.Gender
                 }
             });
-        }
-
-
-        [HttpDelete("user/{id}")]
-        //http://localhost:5062/api/User/user/{id}
-        public async Task<IActionResult> DeleteUser(int id)
-        {
-            try
-            {
-                var user = await _context.StrokeUsers
-                    .SingleOrDefaultAsync(u => u.UserId == id);
-
-                if (user == null)
-                {
-                    return NotFound("User not found.");
-                }
-
-                _context.StrokeUsers.Remove(user);
-                await _context.SaveChangesAsync();
-
-                return Ok("User deleted successfully.");
-            }
-            catch (Exception ex)    
-            {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
         }
     }
 }
