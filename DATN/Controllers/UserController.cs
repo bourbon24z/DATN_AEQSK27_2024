@@ -205,7 +205,7 @@ namespace DATN.Controllers
                 }
             });
         }
-<<<<<<< HEAD
+
         
         [HttpPost("forgot-password")]
         [AllowAnonymous]
@@ -317,7 +317,7 @@ namespace DATN.Controllers
 
             return Ok(new { message = "Password has been updated successfully." });
         }
-=======
+
         [HttpGet("users/{id}")]
 // http://localhost:5062/api/admin/users/123
         public async Task<IActionResult> GetUserById(int id)
@@ -357,6 +357,6 @@ namespace DATN.Controllers
             }
         }
 
->>>>>>> 5217909c63e847b2392281dda088dbb961e6b77d
+
     }
 }
