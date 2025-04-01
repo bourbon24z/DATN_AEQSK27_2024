@@ -43,6 +43,7 @@ public class OtpController : ControllerBase
     }
     [HttpPost("send-otp")]
     [Authorize]
+    //http://localhost:5062/api/Otp/send-otp
     public async Task<IActionResult> SendOtp()
     {
        

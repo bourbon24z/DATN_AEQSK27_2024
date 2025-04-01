@@ -45,14 +45,14 @@ namespace DATN.Controllers
             if (existingUser != null)
             {
                 var errors = new List<string>();
-                if (existingUser.EmailExists) errors.Add("Email đã tồn tại.");
-                if (existingUser.PhoneExists) errors.Add("Số điện thoại đã tồn tại.");
-                if (existingUser.UsernameExists) errors.Add("Username đã tồn tại.");
+                if (existingUser.EmailExists) errors.Add("The email already exists..");
+                if (existingUser.PhoneExists) errors.Add("The phone nummber already exists..");
+                if (existingUser.UsernameExists) errors.Add("The username already exists..");
 
                 return BadRequest(string.Join(" ", errors)); 
             }
 
-            // Tạo người dùng tạm thời nếu không có lỗi
+            
             var tempUser = new UserRegistrationTemp
             {
                 Username = registerUserDto.Username,
@@ -72,7 +72,7 @@ namespace DATN.Controllers
             
             await _emailService.SendEmailAsync(registerUserDto.Email, "OTP Confirmation", $"Your OTP is: {tempUser.Otp}");
 
-            return Ok("OTP đã được gửi đến email của bạn. Vui lòng xác nhận.");
+            return Ok("Otp has been sent.");
         }
 
 
@@ -84,7 +84,7 @@ namespace DATN.Controllers
 
             if (tempUser == null || tempUser.OtpExpiry < DateTime.UtcNow)
             {
-                return BadRequest("OTP không hợp lệ hoặc đã hết hạn.");
+                return BadRequest("OTP invalid, please try again.");
             }
 
             var newUser = new StrokeUser
@@ -120,7 +120,7 @@ namespace DATN.Controllers
             _context.UserRegistrationTemps.Remove(tempUser);
             await _context.SaveChangesAsync();
 
-            return Ok("Email đã được xác minh và đăng ký thành công.");
+            return Ok("The email has been successfully verified and registered..");
         }
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
@@ -133,7 +133,7 @@ namespace DATN.Controllers
 
             if (dbUser == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, dbUser.Password))
             {
-                return Unauthorized("Username hoặc mật khẩu không đúng.");
+                return Unauthorized("Incorrect username or password.");
             }
 
             var roles = await _context.UserRoles
@@ -160,7 +160,7 @@ namespace DATN.Controllers
 
             return Ok(new
             {
-                message = "Đăng nhập thành công.",
+                message = "Login Succesfully.",
                 data = new
                 {
                     dbUser.UserId,
@@ -204,6 +204,117 @@ namespace DATN.Controllers
                     dbUser.Gender
                 }
             });
+        }
+        
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        //http://localhost:5062/api/User/forgot-password
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
+        {
+            
+            var user = await _context.StrokeUsers.SingleOrDefaultAsync(u => u.Email == forgotPasswordDto.Email);
+            if (user == null)
+            {
+               
+                return Ok("If this email exists in our system, an OTP has been sent for password reset.");
+            }
+
+            
+            var otp = new Random().Next(100000, 999999).ToString();
+
+            
+            var userVerification = new UserVerification
+            {
+                UserId = user.UserId,
+                Email = user.Email,
+                VerificationCode = otp,
+                OtpExpiry = DateTime.UtcNow.AddMinutes(15), 
+                IsVerified = false
+            };
+            _context.UserVerifications.Add(userVerification);
+            await _context.SaveChangesAsync();
+
+            
+            await _emailService.SendEmailAsync(
+                user.Email,
+                "Password Reset OTP",
+                $"Your OTP for password reset is: {otp}. It will expire in 15 minutes."
+            );
+
+            return Ok("OTP has been sent to your email for password reset.");
+        }
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        //http://localhost:5062/api/User/reset-password
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
+        {
+            
+            var user = await _context.StrokeUsers.SingleOrDefaultAsync(u => u.Email == resetPasswordDto.Email);
+            if (user == null)
+            {
+                return BadRequest("Invalid request.");
+            }
+
+            
+            var verification = await _context.UserVerifications
+                .Where(v => v.Email == resetPasswordDto.Email &&
+                            v.VerificationCode == resetPasswordDto.Otp &&
+                            !v.IsVerified)
+                .OrderByDescending(v => v.OtpExpiry)
+                .FirstOrDefaultAsync();
+
+            if (verification == null || verification.OtpExpiry < DateTime.UtcNow)
+            {
+                return BadRequest("Invalid or expired OTP.");
+            }
+
+            
+            user.Password = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.NewPassword);
+            await _context.SaveChangesAsync();
+
+            // mark otp has been used
+            verification.IsVerified = true;
+            await _context.SaveChangesAsync();
+
+            return Ok("Password has been reset successfully.");
+        }
+        [HttpPut("change-password")]
+        [Authorize]
+        //http://localhost:5062/api/User/change-password
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            // get by id
+            var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdStr, out int userId))
+            {
+                return BadRequest("Invalid user identifier.");
+            }
+
+            // find by id
+            var user = await _context.StrokeUsers.FindAsync(userId);
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+
+            // compare old and new pass
+            if (!BCrypt.Net.BCrypt.Verify(changePasswordDto.CurrentPassword, user.Password))
+            {
+                return BadRequest("Current password is incorrect.");
+            }
+
+          
+            // check new pass dont match current pass
+            if (changePasswordDto.CurrentPassword == changePasswordDto.NewPassword)
+            {
+                return BadRequest("The new password must be different from the current password.");
+            }
+
+            
+            user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Password has been updated successfully." });
         }
     }
 }

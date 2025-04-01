@@ -4,11 +4,14 @@ using System.Threading.Tasks;
 using DATN.Data;
 using DATN.Models;
 using DATN.Dto;
+using Microsoft.AspNetCore.Authorization;
+using System.Data;
 
 namespace DATN.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    
     public class AdminController : ControllerBase
     {
         private readonly StrokeDbContext _context;

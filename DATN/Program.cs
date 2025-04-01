@@ -10,6 +10,7 @@ builder.Services.AddDbContext<StrokeDbContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
     new MySqlServerVersion(new Version(8, 0, 21)),
     mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 builder.Services.AddSwaggerGen();
@@ -19,7 +20,6 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(5062);
 });
-
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
@@ -35,9 +35,12 @@ builder.Services.AddAuthentication("Bearer")
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
+            // Sửa lại RoleClaimType cho thống nhất với cách bạn tạo token (chọn "role" hoặc "roles")
+            RoleClaimType = "role"
         };
     });
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -47,7 +50,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Enter 'Bearer' "
+        Description = "Enter 'Bearer' [space] and your token"
     });
 
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -66,18 +69,41 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-
 var app = builder.Build();
+
+
+app.Use(async (context, next) =>
+{
+    
+    Console.WriteLine($"Authorization Header: {context.Request.Headers["Authorization"]}");
+    await next.Invoke();  
+    if (context.User.Identity.IsAuthenticated)
+    {
+        var userId = context.User.FindFirst("nameid")?.Value;
+        var roles = context.User.FindAll("role").Select(r => r.Value);
+        Console.WriteLine($"Authenticated UserId: {userId}");
+        Console.WriteLine($"Roles: {string.Join(", ", roles)}");
+    }
+    else
+    {
+        Console.WriteLine("User is not authenticated.");
+    }
+});
 
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
     app.UseSwagger();
-    app.UseSwaggerUI();
-    app.MapControllers();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "From AEQS Super Cute With Luv <3");
+    });
 }
+
 
 app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
+
 app.Run();
