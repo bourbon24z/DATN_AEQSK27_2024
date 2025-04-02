@@ -174,6 +174,7 @@ namespace DATN.Controllers
                 {
                     dbUser.UserId,
                     dbUser.Username,
+                    dbUser.PatientName,
                     dbUser.DateOfBirth,
                     dbUser.Email,
                     dbUser.Gender,
