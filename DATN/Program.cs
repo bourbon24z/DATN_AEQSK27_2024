@@ -36,7 +36,7 @@ builder.Services.AddAuthentication("Bearer")
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
-            // Sửa lại RoleClaimType cho thống nhất với cách bạn tạo token (chọn "role" hoặc "roles")
+            
             RoleClaimType = "role"
         };
     });
