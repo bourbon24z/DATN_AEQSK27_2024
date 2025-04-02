@@ -136,6 +136,7 @@ namespace DATN.Controllers
                 return Unauthorized("Incorrect username or password.");
             }
 
+         
             var roles = await _context.UserRoles
                 .Where(ur => ur.UserId == dbUser.UserId && ur.IsActive)
                 .Select(ur => ur.Role.RoleName)
@@ -143,13 +144,21 @@ namespace DATN.Controllers
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes("huynguyencutephomaiquenhatthegioi12345!");
+
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString())
+    };
+
+            
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-            new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString()),
-            new Claim(ClaimTypes.Role, string.Join(",", roles))
-        }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = "localhost:5062",
                 Audience = "localhost:5062",
@@ -175,6 +184,7 @@ namespace DATN.Controllers
                 }
             });
         }
+
         //http://localhost:5062/api/User/update-basic-info
         [HttpPut("update-basic-info")]
         [Authorize]
@@ -206,6 +216,7 @@ namespace DATN.Controllers
                 }
             });
         }
+
         
         [HttpPost("forgot-password")]
         [AllowAnonymous]
@@ -317,5 +328,46 @@ namespace DATN.Controllers
 
             return Ok(new { message = "Password has been updated successfully." });
         }
+
+        [HttpGet("users/{id}")]
+// http://localhost:5062/api/admin/users/123
+        public async Task<IActionResult> GetUserById(int id)
+        {
+            try
+            {
+                var user = await _context.StrokeUsers.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserId == id);
+
+                if (user == null)
+                {
+                    return NotFound("User not found.");
+                }
+
+                var roles = await _context.UserRoles.AsNoTracking()
+                    .Where(ur => ur.UserId == user.UserId && ur.IsActive)
+                    .Select(ur => ur.Role.RoleName)
+                    .ToListAsync();
+
+                var userDto = new
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Roles = roles,
+                    PatientName = user.PatientName,
+                    DateOfBirth = user.DateOfBirth,
+                    Gender = user.Gender,
+                    Phone = user.Phone,
+                    Email = user.Email
+                };
+
+                return Ok(userDto);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+
     }
 }
