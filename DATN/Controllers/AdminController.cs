@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using DATN.Data;
-using DATN.Models;
 using DATN.Dto;
-using Microsoft.AspNetCore.Authorization;
-using System.Data;
+using DATN.Models;
 
 namespace DATN.Controllers
 {
@@ -19,20 +21,33 @@ namespace DATN.Controllers
         {
             _context = context;
         }
-        /// Create a new admin account
+
+        
+        private async Task<Role> GetOrCreateAdminRoleAsync()
+        {
+            var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
+            if (adminRole == null)
+            {
+                adminRole = new Role { RoleName = "admin" };
+                _context.Roles.Add(adminRole);
+                await _context.SaveChangesAsync();
+            }
+            return adminRole;
+        }
+
+
         [HttpPost("create-admin")]
-        //http://localhost:5062/api/admin/create-admin
         public async Task<IActionResult> CreateAdmin([FromBody] CreateAdminDto model)
         {
             try
             {
-                // Check if username exists
+                
                 if (await _context.StrokeUsers.AnyAsync(u => u.Username == model.Username))
                 {
                     return BadRequest($"The username '{model.Username}' already exists.");
                 }
 
-                // Create new admin user
+                
                 var newAdminUser = new StrokeUser
                 {
                     Username = model.Username,
@@ -45,24 +60,41 @@ namespace DATN.Controllers
                     CreatedAt = DateTime.UtcNow,
                     IsVerified = true
                 };
-                _context.StrokeUsers.Add(newAdminUser);
-                await _context.SaveChangesAsync();
 
-                // Ensure admin role exists
-                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin")
-                                ?? new Role { RoleName = "admin" };
-                _context.Roles.Add(adminRole);
-                await _context.SaveChangesAsync();
-
-                // Assign admin role to user
-                _context.UserRoles.Add(new UserRole
+               
+                var strategy = _context.Database.CreateExecutionStrategy();
+                await strategy.ExecuteAsync(async () =>
                 {
-                    UserId = newAdminUser.UserId,
-                    RoleId = adminRole.RoleId,
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true
+                    
+                    using (var transaction = await _context.Database.BeginTransactionAsync())
+                    {
+                        _context.StrokeUsers.Add(newAdminUser);
+                        await _context.SaveChangesAsync();
+
+                        
+                        var adminRole = await _context.Roles
+                            .FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
+                        if (adminRole == null)
+                        {
+                            adminRole = new Role { RoleName = "admin" };
+                            _context.Roles.Add(adminRole);
+                            await _context.SaveChangesAsync();
+                        }
+
+                       
+                        _context.UserRoles.Add(new UserRole
+                        {
+                            UserId = newAdminUser.UserId,
+                            RoleId = adminRole.RoleId,
+                            CreatedAt = DateTime.UtcNow,
+                            IsActive = true
+                        });
+                        await _context.SaveChangesAsync();
+
+                        
+                        await transaction.CommitAsync();
+                    }
                 });
-                await _context.SaveChangesAsync();
 
                 return Ok($"The admin account '{model.Username}' has been successfully created.");
             }
@@ -73,18 +105,18 @@ namespace DATN.Controllers
         }
 
 
-        // Assign admin role to an existing user
+
         [HttpPost("add-admin-role")]
-        //http://localhost:5062/api/admin/add-admin-role
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> AddAdminRole([FromBody] AddAdminRoleDto model)
         {
             try
             {
                 var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == model.UserId);
-                if (user == null) return NotFound($"The user with UserId {model.UserId} does not exist.");
+                if (user == null)
+                    return NotFound($"The user with UserId {model.UserId} does not exist.");
 
-                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin")
-                                ?? new Role { RoleName = "admin" };
+                var adminRole = await GetOrCreateAdminRoleAsync();
                 if (!await _context.UserRoles.AnyAsync(ur => ur.UserId == model.UserId && ur.RoleId == adminRole.RoleId))
                 {
                     _context.UserRoles.Add(new UserRole
@@ -95,7 +127,6 @@ namespace DATN.Controllers
                         IsActive = true
                     });
                     await _context.SaveChangesAsync();
-
                     return Ok($"The admin role has been assigned to user {model.UserId}.");
                 }
 
@@ -107,14 +138,14 @@ namespace DATN.Controllers
             }
         }
 
-        // Update admin role status for a user
+      
         [HttpPost("update-admin-status")]
-        //http://localhost:5062/api/admin/update-admin-status
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateAdminStatus(int userId, bool isActive)
         {
             try
             {
-                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "admin");
+                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
                 if (adminRole == null) return NotFound("The admin role does not exist.");
 
                 var userRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.RoleId);
@@ -122,7 +153,6 @@ namespace DATN.Controllers
 
                 userRole.IsActive = isActive;
                 await _context.SaveChangesAsync();
-
                 return Ok($"The admin role status for user {userId} has been updated to {isActive}.");
             }
             catch (Exception ex)
@@ -131,10 +161,9 @@ namespace DATN.Controllers
             }
         }
 
-
-        // Get roles of a specific user
+       
         [HttpGet("user-roles/{userId}")]
-        //http://localhost:5062/api/admin/user-roles/{userId}
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetUserRoles(int userId)
         {
             try
@@ -143,7 +172,6 @@ namespace DATN.Controllers
                     .Where(ur => ur.UserId == userId && ur.IsActive)
                     .Select(ur => ur.Role.RoleName)
                     .ToListAsync();
-
                 return Ok(roles);
             }
             catch (Exception ex)
@@ -152,16 +180,16 @@ namespace DATN.Controllers
             }
         }
 
-
+  
         [HttpGet("users")]
-        //http://localhost:5062/api/admin/users
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> GetAllUsers()
         {
             try
             {
                 var users = await _context.StrokeUsers.AsNoTracking().ToListAsync();
-
                 var userDtos = new List<object>();
+
                 foreach (var user in users)
                 {
                     var roles = await _context.UserRoles.AsNoTracking()
@@ -181,7 +209,6 @@ namespace DATN.Controllers
                         Email = user.Email
                     });
                 }
-
                 return Ok(userDtos);
             }
             catch (Exception ex)
@@ -190,15 +217,14 @@ namespace DATN.Controllers
             }
         }
 
-
-
+        
         [HttpDelete("remove-admin-role/{userId}")]
-        //http://localhost:5062/api/admin/remove-admin-role/{userId}
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> RemoveAdminRole(int userId)
         {
             try
             {
-                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "admin");
+                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
                 if (adminRole == null) return NotFound("The admin role does not exist.");
 
                 var userRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.RoleId);
@@ -206,7 +232,6 @@ namespace DATN.Controllers
 
                 _context.UserRoles.Remove(userRole);
                 await _context.SaveChangesAsync();
-
                 return Ok($"The admin role of user {userId} has been deleted.");
             }
             catch (Exception ex)
@@ -215,10 +240,9 @@ namespace DATN.Controllers
             }
         }
 
-
-        // Delete a user and all related roles    
+    
         [HttpDelete("delete-user/{userId}")]
-        //http://localhost:5062/api/admin/delete-user/{userId}
+        [Authorize(Roles = "admin")]
         public async Task<IActionResult> DeleteUser(int userId)
         {
             try
@@ -231,10 +255,8 @@ namespace DATN.Controllers
                 {
                     _context.UserRoles.RemoveRange(userRoles);
                 }
-
                 _context.StrokeUsers.Remove(user);
                 await _context.SaveChangesAsync();
-
                 return Ok($"The user with UserId {userId} has been successfully deleted.");
             }
             catch (Exception ex)

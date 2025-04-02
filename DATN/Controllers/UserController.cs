@@ -136,6 +136,7 @@ namespace DATN.Controllers
                 return Unauthorized("Incorrect username or password.");
             }
 
+         
             var roles = await _context.UserRoles
                 .Where(ur => ur.UserId == dbUser.UserId && ur.IsActive)
                 .Select(ur => ur.Role.RoleName)
@@ -143,13 +144,21 @@ namespace DATN.Controllers
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes("huynguyencutephomaiquenhatthegioi12345!");
+
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString())
+    };
+
+            
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-            new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString()),
-            new Claim(ClaimTypes.Role, string.Join(",", roles))
-        }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddHours(1),
                 Issuer = "localhost:5062",
                 Audience = "localhost:5062",
@@ -174,6 +183,7 @@ namespace DATN.Controllers
                 }
             });
         }
+
         //http://localhost:5062/api/User/update-basic-info
         [HttpPut("update-basic-info")]
         [Authorize]

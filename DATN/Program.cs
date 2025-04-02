@@ -1,31 +1,44 @@
 ﻿using DATN.Configuration;
 using DATN.Data;
+using DATN.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<StrokeDbContext>(options =>
-    options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
-    new MySqlServerVersion(new Version(8, 0, 21)),
-    mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddControllers();
-builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<StrokeDbContext>(options =>
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        new MySqlServerVersion(new Version(8, 0, 21)),
+        mysqlOptions => mysqlOptions.EnableRetryOnFailure()));
+
 builder.Services.AddSingleton<EmailService>();
+
+
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
+
+
+builder.Services.AddSingleton<IJwtTokenService>(new JwtTokenService(jwtSettings));
+
 
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(5062);
 });
 
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
-var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>();
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
-builder.Services.AddAuthentication("Bearer")
-    .AddJwtBearer("Bearer", options =>
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -36,59 +49,60 @@ builder.Services.AddAuthentication("Bearer")
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Key)),
-            // Sửa lại RoleClaimType cho thống nhất với cách bạn tạo token (chọn "role" hoặc "roles")
-            RoleClaimType = "role"
+            RoleClaimType = ClaimTypes.Role,               
+            NameClaimType = ClaimTypes.NameIdentifier      
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine("Authentication failed: " + context.Exception.Message);
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Console.WriteLine("Token validated successfully.");
+                
+                foreach (var claim in context.Principal.Claims)
+                {
+                    Console.WriteLine($"{claim.Type}: {claim.Value}");
+                }
+                return Task.CompletedTask;
+            }
         };
     });
 
+
 builder.Services.AddSwaggerGen(options =>
 {
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Description = "Enter 'Bearer' [space] and your token",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
         Scheme = "Bearer",
-        BearerFormat = "JWT",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and your token"
+        BearerFormat = "JWT"
     });
-
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            new OpenApiSecurityScheme
             {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
     });
 });
 
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
 var app = builder.Build();
 
-
-app.Use(async (context, next) =>
-{
-    
-    Console.WriteLine($"Authorization Header: {context.Request.Headers["Authorization"]}");
-    await next.Invoke();  
-    if (context.User.Identity.IsAuthenticated)
-    {
-        var userId = context.User.FindFirst("nameid")?.Value;
-        var roles = context.User.FindAll("role").Select(r => r.Value);
-        Console.WriteLine($"Authenticated UserId: {userId}");
-        Console.WriteLine($"Roles: {string.Join(", ", roles)}");
-    }
-    else
-    {
-        Console.WriteLine("User is not authenticated.");
-    }
-});
 
 if (app.Environment.IsDevelopment())
 {
@@ -96,7 +110,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "From AEQS Super Cute With Luv <3");
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
     });
 }
 
@@ -104,6 +118,34 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+
+if (app.Environment.IsDevelopment())
+{
+   
+    app.Use(async (context, next) =>
+    {
+        
+        var authHeader = context.Request.Headers["Authorization"].ToString();
+        Console.WriteLine($"Authorization Header: {authHeader}");
+
+        await next.Invoke();
+
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var roles = context.User.FindAll(ClaimTypes.Role).Select(r => r.Value);
+            Console.WriteLine($"Authenticated UserId: {userId}");
+            Console.WriteLine($"Roles: {string.Join(", ", roles)}");
+        }
+        else
+        {
+            Console.WriteLine("User is not authenticated.");
+        }
+    });
+}
+
+
 app.MapControllers();
+
 
 app.Run();
