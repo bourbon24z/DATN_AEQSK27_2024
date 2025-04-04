@@ -41,6 +41,15 @@ namespace DATN.Controllers
                                    u.Phone,
                                    u.Username})
                 .FirstOrDefaultAsync();
+            var existingTempUser = await _context.UserRegistrationTemps
+                .Where(u => 
+                u.Email == registerUserDto.Email ||
+                u.Phone == registerUserDto.Phone ||
+                u.Username == registerUserDto.Username)
+                .Select(u => new { u.Email, 
+                                   u.Phone, 
+                                   u.Username })
+                .FirstOrDefaultAsync();
             if (existingUser != null)
             {
                 var errors = new List<string>();
@@ -60,7 +69,7 @@ namespace DATN.Controllers
                 Password = BCrypt.Net.BCrypt.HashPassword(registerUserDto.Password),
                 Email = registerUserDto.Email,
                 Otp = otpCode,
-                OtpExpiry = DateTime.UtcNow.AddMinutes(15),
+                OtpExpiry = DateTime.Now.AddMinutes(15),
                 PatientName = registerUserDto.PatientName,
                 DateOfBirth = registerUserDto.DateOfBirth,
                 Gender = registerUserDto.Gender,
@@ -105,7 +114,7 @@ namespace DATN.Controllers
                 Gender = tempUser.Gender,
                 Phone = tempUser.Phone,
                 Email = tempUser.Email,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = DateTime.Now,
                 IsVerified = true
             };
             _context.StrokeUsers.Add(newUser);
