@@ -11,6 +11,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
+using DATN.Configuration;
 
 namespace DATN.Controllers
 {
@@ -30,35 +31,35 @@ namespace DATN.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterUserDto registerUserDto)
         {
-            
+            // check  existing user
             var existingUser = await _context.StrokeUsers
-                .Where(u => u.Email == registerUserDto.Email || u.Phone == registerUserDto.Phone || u.Username == registerUserDto.Username)
-                .Select(u => new
-                {
-                    EmailExists = u.Email == registerUserDto.Email,
-                    PhoneExists = u.Phone == registerUserDto.Phone,
-                    UsernameExists = u.Username == registerUserDto.Username
-                })
+                .Where(u => 
+                u.Email == registerUserDto.Email || 
+                u.Phone == registerUserDto.Phone || 
+                u.Username == registerUserDto.Username)
+                .Select(u => new { u.Email,
+                                   u.Phone,
+                                   u.Username})
                 .FirstOrDefaultAsync();
-
-            
             if (existingUser != null)
             {
                 var errors = new List<string>();
-                if (existingUser.EmailExists) errors.Add("The email already exists..");
-                if (existingUser.PhoneExists) errors.Add("The phone nummber already exists..");
-                if (existingUser.UsernameExists) errors.Add("The username already exists..");
-
-                return BadRequest(string.Join(" ", errors)); 
+                if (existingUser.Email == registerUserDto.Email)
+                    errors.Add("The email already exists.");
+                if (existingUser.Phone == registerUserDto.Phone)
+                    errors.Add("The phone number already exists.");
+                if (existingUser.Username == registerUserDto.Username)
+                    errors.Add("The username already exists.");
+                return BadRequest(string.Join(" ", errors));
             }
 
-            
+            var otpCode = new Random().Next(100000, 999999).ToString();  
             var tempUser = new UserRegistrationTemp
             {
                 Username = registerUserDto.Username,
                 Password = BCrypt.Net.BCrypt.HashPassword(registerUserDto.Password),
                 Email = registerUserDto.Email,
-                Otp = new Random().Next(100000, 999999).ToString(),
+                Otp = otpCode,
                 OtpExpiry = DateTime.UtcNow.AddMinutes(15),
                 PatientName = registerUserDto.PatientName,
                 DateOfBirth = registerUserDto.DateOfBirth,
@@ -70,10 +71,18 @@ namespace DATN.Controllers
             await _context.SaveChangesAsync();
 
             
-            await _emailService.SendEmailAsync(registerUserDto.Email, "OTP Confirmation", $"Your OTP is: {tempUser.Otp}");
+            var emailQueue = HttpContext.RequestServices.GetRequiredService<IBackgroundEmailQueue>();
+            emailQueue.EnqueueEmail(async () =>
+            {
+                await _emailService.SendEmailAsync(
+                    registerUserDto.Email,
+                    "OTP Confirmation",
+                    $"Your OTP is: {otpCode}");
+            });
 
-            return Ok("Otp has been sent.");
+            return Ok("OTP has been sent.");
         }
+
 
 
         [HttpPost("verifyotp")]
