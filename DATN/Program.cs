@@ -20,6 +20,9 @@ builder.Services.AddDbContext<StrokeDbContext>(options =>
         mysqlOptions => mysqlOptions.EnableRetryOnFailure()));
 
 builder.Services.AddSingleton<EmailService>();
+builder.Services.AddSingleton<IBackgroundEmailQueue>(new BackgroundEmailQueue(100));
+builder.Services.AddHostedService<EmailBackgroundService>();
+
 
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
