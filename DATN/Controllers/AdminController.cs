@@ -36,17 +36,37 @@ namespace DATN.Controllers
             return adminRole;
         }
 
+        private async Task<List<string>> ValidateDuplicateAdminAsync(CreateAdminDto dto)
+        {
+            var duplicateUser = await _context.StrokeUsers
+                .FirstOrDefaultAsync(u =>
+                    u.Username == dto.Username ||
+                    u.Email == dto.Email ||
+                    u.Phone == dto.Phone);
+
+            var errors = new List<string>();
+            if (duplicateUser != null)
+            {
+                if (duplicateUser.Username == dto.Username)
+                    errors.Add($"The username '{dto.Username}' already exists.");
+                if (duplicateUser.Email == dto.Email)
+                    errors.Add($"The email '{dto.Email}' already exists.");
+                if (duplicateUser.Phone == dto.Phone)
+                    errors.Add($"The phone number '{dto.Phone}' already exists.");
+            }
+            return errors;
+        }
 
         [HttpPost("create-admin")]
+        //http://localhost:5062/api/admin/create-admin
         public async Task<IActionResult> CreateAdmin([FromBody] CreateAdminDto model)
         {
             try
             {
-                
-                if (await _context.StrokeUsers.AnyAsync(u => u.Username == model.Username))
-                {
-                    return BadRequest($"The username '{model.Username}' already exists.");
-                }
+               
+                var duplicateErrors = await ValidateDuplicateAdminAsync(model);
+                if (duplicateErrors.Any())
+                    return BadRequest(string.Join(" ", duplicateErrors));
 
                 
                 var newAdminUser = new StrokeUser
@@ -62,11 +82,10 @@ namespace DATN.Controllers
                     IsVerified = true
                 };
 
-               
+                
                 var strategy = _context.Database.CreateExecutionStrategy();
                 await strategy.ExecuteAsync(async () =>
                 {
-                    
                     using (var transaction = await _context.Database.BeginTransactionAsync())
                     {
                         _context.StrokeUsers.Add(newAdminUser);
@@ -77,9 +96,8 @@ namespace DATN.Controllers
                             .FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
                         if (adminRole == null)
                         {
-                            adminRole = new Role { RoleName = "admin" };
-                            _context.Roles.Add(adminRole);
-                            await _context.SaveChangesAsync();
+                            
+                            throw new Exception("The 'admin' role does not exist in the database.");
                         }
 
                        
@@ -87,12 +105,11 @@ namespace DATN.Controllers
                         {
                             UserId = newAdminUser.UserId,
                             RoleId = adminRole.RoleId,
-                            CreatedAt = DateTime.UtcNow,
+                            CreatedAt = DateTime.Now,  
                             IsActive = true
                         });
                         await _context.SaveChangesAsync();
 
-                        
                         await transaction.CommitAsync();
                     }
                 });
@@ -101,6 +118,7 @@ namespace DATN.Controllers
             }
             catch (Exception ex)
             {
+                
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
@@ -109,6 +127,7 @@ namespace DATN.Controllers
 
         [HttpPost("add-admin-role")]
         [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/add-admin-role
         public async Task<IActionResult> AddAdminRole([FromBody] AddAdminRoleDto model)
         {
             try
@@ -165,6 +184,7 @@ namespace DATN.Controllers
        
         [HttpGet("user-roles/{userId}")]
         [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/user-roles/13
         public async Task<IActionResult> GetUserRoles(int userId)
         {
             try
@@ -184,6 +204,7 @@ namespace DATN.Controllers
   
         [HttpGet("users")]
         [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/users
         public async Task<IActionResult> GetAllUsers()
         {
             try
@@ -221,6 +242,7 @@ namespace DATN.Controllers
         
         [HttpDelete("remove-admin-role/{userId}")]
         [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/remove-admin-role/13
         public async Task<IActionResult> RemoveAdminRole(int userId)
         {
             try
@@ -244,6 +266,7 @@ namespace DATN.Controllers
     
         [HttpDelete("delete-user/{userId}")]
         [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/delete-user/13
         public async Task<IActionResult> DeleteUser(int userId)
         {
             try
