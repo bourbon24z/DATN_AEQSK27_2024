@@ -16,34 +16,36 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "Device",
+                name: "device",
                 columns: table => new
                 {
-                    DeviceId = table.Column<int>(type: "int", nullable: false)
+                    device_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    DeviceName = table.Column<string>(type: "longtext", nullable: false)
+                    device_name = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    DeviceType = table.Column<string>(type: "longtext", nullable: false)
+                    device_type = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    series = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Device", x => x.DeviceId);
+                    table.PrimaryKey("PK_device", x => x.device_id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "Roles",
+                name: "roles",
                 columns: table => new
                 {
-                    RoleId = table.Column<int>(type: "int", nullable: false)
+                    role_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    RoleName = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
+                    role_name = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Roles", x => x.RoleId);
+                    table.PrimaryKey("PK_roles", x => x.role_id);
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -66,7 +68,9 @@ namespace DATN.Migrations
                     email = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    is_verified = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false)
+                    is_verified = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
+                    gps = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4")
                 },
                 constraints: table =>
                 {
@@ -103,26 +107,6 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "UserVerifications",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    Email = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    VerificationCode = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    OtpExpiry = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    IsVerified = table.Column<bool>(type: "tinyint(1)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserVerifications", x => x.Id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "case_history",
                 columns: table => new
                 {
@@ -148,31 +132,25 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "HealthMetric",
+                name: "invitation_codes",
                 columns: table => new
                 {
-                    HealthMetricId = table.Column<int>(type: "int", nullable: false)
+                    invitation_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    DeviceId = table.Column<int>(type: "int", nullable: false),
-                    SystolicPressure = table.Column<float>(type: "float", nullable: false),
-                    DiastolicPressure = table.Column<float>(type: "float", nullable: false),
-                    Temperature = table.Column<float>(type: "float", nullable: false),
-                    BloodPh = table.Column<float>(type: "float", nullable: false),
-                    RecordedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                    code = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    inviter_user_id = table.Column<int>(type: "int", nullable: false),
+                    status = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    expires_at = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_HealthMetric", x => x.HealthMetricId);
+                    table.PrimaryKey("PK_invitation_codes", x => x.invitation_id);
                     table.ForeignKey(
-                        name: "FK_HealthMetric_Device_DeviceId",
-                        column: x => x.DeviceId,
-                        principalTable: "Device",
-                        principalColumn: "DeviceId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_HealthMetric_stroke_user_UserId",
-                        column: x => x.UserId,
+                        name: "FK_invitation_codes_stroke_user_inviter_user_id",
+                        column: x => x.inviter_user_id,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -180,48 +158,27 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "InvitationCodes",
+                name: "relationships",
                 columns: table => new
                 {
-                    InvitationId = table.Column<int>(type: "int", nullable: false)
+                    relationship_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    Code = table.Column<string>(type: "longtext", nullable: false)
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    inviter_id = table.Column<int>(type: "int", nullable: false),
+                    relationship_type = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    InviterUserId = table.Column<int>(type: "int", nullable: false),
-                    Status = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    ExpiresAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_InvitationCodes", x => x.InvitationId);
+                    table.PrimaryKey("PK_relationships", x => x.relationship_id);
                     table.ForeignKey(
-                        name: "FK_InvitationCodes_stroke_user_InviterUserId",
-                        column: x => x.InviterUserId,
+                        name: "FK_relationships_stroke_user_inviter_id",
+                        column: x => x.inviter_id,
                         principalTable: "stroke_user",
-                        principalColumn: "user_id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
-                name: "medical_information",
-                columns: table => new
-                {
-                    medical_infor_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    spo2_information = table.Column<float>(type: "float", nullable: false),
-                    heart_rate = table.Column<float>(type: "float", nullable: false),
-                    gps = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    user_id = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_medical_information", x => x.medical_infor_id);
+                        principalColumn: "user_id");
                     table.ForeignKey(
-                        name: "FK_MedicalInformation_StrokeUser_UserId",
+                        name: "FK_relationships_stroke_user_user_id",
                         column: x => x.user_id,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
@@ -230,28 +187,35 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "Relationships",
+                name: "user_medical_data",
                 columns: table => new
                 {
-                    RelationshipId = table.Column<int>(type: "int", nullable: false)
+                    user_medical_data_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    InviterId = table.Column<int>(type: "int", nullable: false),
-                    RelationshipType = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    device_id = table.Column<int>(type: "int", nullable: true),
+                    systolic_pressure = table.Column<float>(type: "float", nullable: true),
+                    diastolic_pressure = table.Column<float>(type: "float", nullable: true),
+                    temperature = table.Column<float>(type: "float", nullable: true),
+                    blood_ph = table.Column<float>(type: "float", nullable: true),
+                    recorded_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    spo2_information = table.Column<float>(type: "float", nullable: true),
+                    heart_rate = table.Column<float>(type: "float", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Relationships", x => x.RelationshipId);
+                    table.PrimaryKey("PK_user_medical_data", x => x.user_medical_data_id);
                     table.ForeignKey(
-                        name: "FK_Relationships_stroke_user_InviterId",
-                        column: x => x.InviterId,
-                        principalTable: "stroke_user",
-                        principalColumn: "user_id");
+                        name: "FK_user_medical_data_device_device_id",
+                        column: x => x.device_id,
+                        principalTable: "device",
+                        principalColumn: "device_id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_Relationships_stroke_user_UserId",
-                        column: x => x.UserId,
+                        name: "FK_user_medical_data_stroke_user_user_id",
+                        column: x => x.user_id,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -259,31 +223,63 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "UserRoles",
+                name: "user_roles",
                 columns: table => new
                 {
-                    UserRoleId = table.Column<int>(type: "int", nullable: false)
+                    user_role_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    UserId = table.Column<int>(type: "int", nullable: false),
-                    RoleId = table.Column<int>(type: "int", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    IsActive = table.Column<bool>(type: "tinyint(1)", nullable: false)
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    role_id = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    is_active = table.Column<bool>(type: "tinyint(1)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_UserRoles", x => x.UserRoleId);
+                    table.PrimaryKey("PK_user_roles", x => x.user_role_id);
                     table.ForeignKey(
-                        name: "FK_UserRoles_Roles_RoleId",
-                        column: x => x.RoleId,
-                        principalTable: "Roles",
-                        principalColumn: "RoleId",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_user_roles_roles_role_id",
+                        column: x => x.role_id,
+                        principalTable: "roles",
+                        principalColumn: "role_id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_UserRoles_stroke_user_UserId",
-                        column: x => x.UserId,
+                        name: "FK_user_roles_stroke_user_user_id",
+                        column: x => x.user_id,
+                        principalTable: "stroke_user",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Restrict);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "user_verifications",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    email = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    verification_code = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    otp_expiry = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    is_verified = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    StrokeUserUserId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_user_verifications", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_UserVerifications_StrokeUser",
+                        column: x => x.user_id,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_user_verifications_stroke_user_StrokeUserUserId",
+                        column: x => x.StrokeUserUserId,
+                        principalTable: "stroke_user",
+                        principalColumn: "user_id");
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
@@ -317,45 +313,49 @@ namespace DATN.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_HealthMetric_DeviceId",
-                table: "HealthMetric",
-                column: "DeviceId",
-                unique: true);
+                name: "IX_invitation_codes_inviter_user_id",
+                table: "invitation_codes",
+                column: "inviter_user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_HealthMetric_UserId",
-                table: "HealthMetric",
-                column: "UserId");
+                name: "IX_relationships_inviter_id",
+                table: "relationships",
+                column: "inviter_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_InvitationCodes_InviterUserId",
-                table: "InvitationCodes",
-                column: "InviterUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_medical_information_user_id",
-                table: "medical_information",
+                name: "IX_relationships_user_id",
+                table: "relationships",
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Relationships_InviterId",
-                table: "Relationships",
-                column: "InviterId");
+                name: "IX_user_medical_data_device_id",
+                table: "user_medical_data",
+                column: "device_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Relationships_UserId",
-                table: "Relationships",
-                column: "UserId");
+                name: "IX_user_medical_data_user_id",
+                table: "user_medical_data",
+                column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserRoles_RoleId",
-                table: "UserRoles",
-                column: "RoleId");
+                name: "IX_user_roles_role_id",
+                table: "user_roles",
+                column: "role_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_UserRoles_UserId",
-                table: "UserRoles",
-                column: "UserId");
+                name: "IX_user_roles_user_id",
+                table: "user_roles",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_user_verifications_StrokeUserUserId",
+                table: "user_verifications",
+                column: "StrokeUserUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_user_verifications_user_id",
+                table: "user_verifications",
+                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_warning_user_id",
@@ -370,34 +370,31 @@ namespace DATN.Migrations
                 name: "case_history");
 
             migrationBuilder.DropTable(
-                name: "HealthMetric");
+                name: "invitation_codes");
 
             migrationBuilder.DropTable(
-                name: "InvitationCodes");
+                name: "relationships");
 
             migrationBuilder.DropTable(
-                name: "medical_information");
-
-            migrationBuilder.DropTable(
-                name: "Relationships");
+                name: "user_medical_data");
 
             migrationBuilder.DropTable(
                 name: "user_registration_temp");
 
             migrationBuilder.DropTable(
-                name: "UserRoles");
+                name: "user_roles");
 
             migrationBuilder.DropTable(
-                name: "UserVerifications");
+                name: "user_verifications");
 
             migrationBuilder.DropTable(
                 name: "warning");
 
             migrationBuilder.DropTable(
-                name: "Device");
+                name: "device");
 
             migrationBuilder.DropTable(
-                name: "Roles");
+                name: "roles");
 
             migrationBuilder.DropTable(
                 name: "stroke_user");

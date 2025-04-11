@@ -1,4 +1,5 @@
-﻿using System;
+﻿using DATN.Verification;
+using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -37,13 +38,22 @@ namespace DATN.Models
 
         [Column("is_verified")]
         public bool IsVerified { get; set; }
-        
-        public ICollection<HealthMetric> HealthMetrics { get; set; }
+        public string Gps { get; set; }
+
+
 
         public ICollection<InvitationCode> InvitationCodes { get; set; }
 
         public ICollection<Relationship> Relationships { get; set; }
 
         public ICollection<UserRole> UserRoles { get; set; }
+
+        public ICollection<UserMedicalData> UserMedicalDatas { get; set; } = new List<UserMedicalData>();
+
+        public ICollection<Warning> Warnings { get; set; } = new List<Warning>();
+
+        public ICollection<CaseHistory> CaseHistories { get; set; } = new List<CaseHistory>();
+
+        public ICollection<UserVerification> UserVerifications { get; set; } = new List<UserVerification>();
     }
 }
