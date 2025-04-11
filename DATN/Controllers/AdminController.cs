@@ -238,8 +238,37 @@ namespace DATN.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
+        [HttpDelete("delete-user/{userId}")]
+        [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/delete-user/13
+        public async Task<IActionResult> DeleteUser(int userId)
+        {
+            try
+            {
+                var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
+                if (user == null) return NotFound($"The user with UserId {userId} does not exist.");
 
-        [HttpPost("remove-admin/{userId}")]
+                var userRoles = await _context.UserRoles.Where(ur => ur.UserId == userId).ToListAsync();
+                if (userRoles.Any())
+
+
+
+
+                {
+                    _context.UserRoles.RemoveRange(userRoles);
+
+                }
+                _context.StrokeUsers.Remove(user);
+                await _context.SaveChangesAsync();
+                return Ok($"The user with UserId {userId} has been successfully deleted.");
+
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+                [HttpPost("remove-admin/{userId}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> RemoveAdminFromUser(int userId)
         {
