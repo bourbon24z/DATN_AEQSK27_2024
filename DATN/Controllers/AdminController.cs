@@ -239,49 +239,43 @@ namespace DATN.Controllers
             }
         }
 
-        
-        [HttpDelete("remove-admin-role/{userId}")]
+        [HttpPost("remove-admin/{userId}")]
         [Authorize(Roles = "admin")]
-        //http://localhost:5062/api/admin/remove-admin-role/13
-        public async Task<IActionResult> RemoveAdminRole(int userId)
+        public async Task<IActionResult> RemoveAdminFromUser(int userId)
         {
             try
             {
-                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
-                if (adminRole == null) return NotFound("The admin role does not exist.");
+               
+                var adminAssignment = await _context.UserRoles
+                    .Include(ur => ur.Role)
+                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.Role.RoleName.ToLower() == "admin");
 
-                var userRole = await _context.UserRoles.FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.RoleId);
-                if (userRole == null) return NotFound("The user does not have the admin role.");
+                if (adminAssignment == null)
+                    return NotFound("The user does not have an admin role assigned.");
 
-                _context.UserRoles.Remove(userRole);
-                await _context.SaveChangesAsync();
-                return Ok($"The admin role of user {userId} has been deleted.");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"An error occurred: {ex.Message}");
-            }
-        }
+                
+                var defaultRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "user");
+                if (defaultRole == null)
+                    return BadRequest("Default role 'User' does not exist. Please create it first.");
 
-    
-        [HttpDelete("delete-user/{userId}")]
-        [Authorize(Roles = "admin")]
-        //http://localhost:5062/api/admin/delete-user/13
-        public async Task<IActionResult> DeleteUser(int userId)
-        {
-            try
-            {
-                var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
-                if (user == null) return NotFound($"The user with UserId {userId} does not exist.");
+               
+                bool hasDefaultRole = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == userId && ur.RoleId == defaultRole.RoleId);
 
-                var userRoles = await _context.UserRoles.Where(ur => ur.UserId == userId).ToListAsync();
-                if (userRoles.Any())
+                if (hasDefaultRole)
                 {
-                    _context.UserRoles.RemoveRange(userRoles);
+                    // check duplicate
+                    _context.UserRoles.Remove(adminAssignment);
                 }
-                _context.StrokeUsers.Remove(user);
+                else
+                {
+                    
+                    adminAssignment.RoleId = defaultRole.RoleId;
+                }
+
                 await _context.SaveChangesAsync();
-                return Ok($"The user with UserId {userId} has been successfully deleted.");
+
+                return Ok("Admin role has been removed and the user is assigned the default 'User' role.");
             }
             catch (Exception ex)
             {
