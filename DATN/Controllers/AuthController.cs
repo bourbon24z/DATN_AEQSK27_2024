@@ -25,23 +25,22 @@ namespace DATN.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            // Giả sử credential là username
+            
             var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.Username == loginDto.Credential);
             if (user == null)
             {
                 return Unauthorized("Invalid credentials.");
             }
 
-            // Kiểm tra mật khẩu sử dụng BCrypt
+          
             if (!BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
             {
                 return Unauthorized("Invalid credentials.");
             }
 
-            // Tạo token với các claim role riêng biệt (ví dụ: "admin", "user")
             var token = _jwtTokenService.GenerateToken(user);
 
-            // Lấy danh sách role đang active của user
+            
             var roles = await _context.UserRoles
                             .Where(ur => ur.UserId == user.UserId && ur.IsActive)
                             .Select(ur => ur.Role.RoleName)

@@ -56,6 +56,78 @@ namespace DATN.Migrations
                     b.ToTable("case_history", (string)null);
                 });
 
+            modelBuilder.Entity("DATN.Models.ClinicalIndicator", b =>
+                {
+                    b.Property<int>("ClinicalIndicatorID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ClinicalIndicatorID");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ClinicalIndicatorID"));
+
+                    b.Property<bool>("BuonNon")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("BuonNon");
+
+                    b.Property<bool>("ChongMat")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("ChongMat");
+
+                    b.Property<bool>("DauDau")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("DauDau");
+
+                    b.Property<bool>("GiamThiLuc")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("GiamThiLuc");
+
+                    b.Property<bool>("IsActived")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("IsActived");
+
+                    b.Property<bool>("KhoNoi")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("KhoNoi");
+
+                    b.Property<bool>("KhoNuot")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("KhoNuot");
+
+                    b.Property<bool>("LuLan")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("LuLan");
+
+                    b.Property<bool>("MatThangCan")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("MatThangCan");
+
+                    b.Property<bool>("MatTriNhoTamThoi")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("MatTriNhoTamThoi");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("RecordedAt");
+
+                    b.Property<int>("ReportCount")
+                        .HasColumnType("int")
+                        .HasColumnName("ReportCount");
+
+                    b.Property<bool>("TeMatChi")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("TeMatChi");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int")
+                        .HasColumnName("UserID");
+
+                    b.HasKey("ClinicalIndicatorID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("clinical_indicator");
+                });
+
             modelBuilder.Entity("DATN.Models.Device", b =>
                 {
                     b.Property<int>("DeviceId")
@@ -84,6 +156,81 @@ namespace DATN.Migrations
                     b.HasKey("DeviceId");
 
                     b.ToTable("device", (string)null);
+                });
+
+            modelBuilder.Entity("DATN.Models.DoctorEvaluation", b =>
+                {
+                    b.Property<int>("DoctorEvaluationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("doctor_evaluation_id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("DoctorEvaluationId"));
+
+                    b.Property<int>("CaseHistoryId")
+                        .HasColumnType("int")
+                        .HasColumnName("case_history_id");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("int")
+                        .HasColumnName("doctor_id");
+
+                    b.Property<DateTime>("EvaluationDate")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("evaluation_date");
+
+                    b.Property<string>("EvaluationNotes")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("evaluation_notes");
+
+                    b.HasKey("DoctorEvaluationId");
+
+                    b.HasIndex("CaseHistoryId");
+
+                    b.HasIndex("DoctorId");
+
+                    b.ToTable("doctor_evaluations");
+                });
+
+            modelBuilder.Entity("DATN.Models.IndicatorSummary", b =>
+                {
+                    b.Property<int>("SummaryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("SummaryID");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("SummaryID"));
+
+                    b.Property<decimal?>("ClinicalScore")
+                        .HasColumnType("decimal(10,4)")
+                        .HasColumnName("ClinicalScore");
+
+                    b.Property<decimal?>("CombinedScore")
+                        .HasColumnType("decimal(10,4)")
+                        .HasColumnName("CombinedScore");
+
+                    b.Property<decimal?>("MolecularScore")
+                        .HasColumnType("decimal(10,4)")
+                        .HasColumnName("MolecularScore");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("RecordedAt");
+
+                    b.Property<decimal?>("SubclinicalScore")
+                        .HasColumnType("decimal(10,4)")
+                        .HasColumnName("SubclinicalScore");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int")
+                        .HasColumnName("UserID");
+
+                    b.HasKey("SummaryID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("indicator_summary");
                 });
 
             modelBuilder.Entity("DATN.Models.InvitationCode", b =>
@@ -122,6 +269,167 @@ namespace DATN.Migrations
                     b.HasIndex("InviterUserId");
 
                     b.ToTable("invitation_codes", (string)null);
+                });
+
+            modelBuilder.Entity("DATN.Models.MedicalHistoryAttribute", b =>
+                {
+                    b.Property<int>("ValueId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("ValueId");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("ValueId"));
+
+                    b.Property<string>("AttributeName")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("AttributeName");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("DataType");
+
+                    b.Property<string>("GroupName")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("GroupName");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("Unit");
+
+                    b.HasKey("ValueId");
+
+                    b.ToTable("medicalhistoryattributes");
+                });
+
+            modelBuilder.Entity("DATN.Models.MedicalHistoryValue", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("UserId");
+
+                    b.Property<int>("AttributeId")
+                        .HasColumnType("int")
+                        .HasColumnName("AttributeId");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("RecordedAt");
+
+                    b.HasKey("UserId", "AttributeId");
+
+                    b.HasIndex("AttributeId");
+
+                    b.ToTable("medicalhistoryvalues");
+                });
+
+            modelBuilder.Entity("DATN.Models.MedicalImage", b =>
+                {
+                    b.Property<int>("MedicalImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("medical_image_id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("MedicalImageId"));
+
+                    b.Property<DateTime>("CapturedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("captured_at");
+
+                    b.Property<int>("CaseHistoryId")
+                        .HasColumnType("int")
+                        .HasColumnName("case_history_id");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("image_url");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("metadata");
+
+                    b.HasKey("MedicalImageId");
+
+                    b.HasIndex("CaseHistoryId");
+
+                    b.ToTable("medical_images");
+                });
+
+            modelBuilder.Entity("DATN.Models.MolecularIndicator", b =>
+                {
+                    b.Property<int>("MolecularIndicatorID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("MolecularIndicatorID");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("MolecularIndicatorID"));
+
+                    b.Property<bool>("IsActived")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("IsActived");
+
+                    b.Property<bool>("MiR_140_3p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_140_3p");
+
+                    b.Property<bool>("MiR_16_5p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_16_5p");
+
+                    b.Property<bool>("MiR_19b_5p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_19b_5p");
+
+                    b.Property<bool>("MiR_20a_5p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_20a_5p");
+
+                    b.Property<bool>("MiR_26b_5p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_26b_5p");
+
+                    b.Property<bool>("MiR_30e_5p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_30e_5p");
+
+                    b.Property<bool>("MiR_320d")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_320d");
+
+                    b.Property<bool>("MiR_320p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_320p");
+
+                    b.Property<bool>("MiR_451a")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_451a");
+
+                    b.Property<bool>("MiR_874_5p")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("miR_874_5p");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("RecordedAt");
+
+                    b.Property<int>("ReportCount")
+                        .HasColumnType("int")
+                        .HasColumnName("ReportCount");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int")
+                        .HasColumnName("UserID");
+
+                    b.HasKey("MolecularIndicatorID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("molecular_indicator");
                 });
 
             modelBuilder.Entity("DATN.Models.Relationship", b =>
@@ -239,6 +547,78 @@ namespace DATN.Migrations
                     b.HasKey("UserId");
 
                     b.ToTable("stroke_user", (string)null);
+                });
+
+            modelBuilder.Entity("DATN.Models.SubclinicalIndicator", b =>
+                {
+                    b.Property<int>("SubclinicalIndicatorID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("SubclinicalIndicatorID");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("SubclinicalIndicatorID"));
+
+                    b.Property<bool>("D_dimer")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("D_dimer");
+
+                    b.Property<bool>("GFAP")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("GFAP");
+
+                    b.Property<bool>("IsActived")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("IsActived");
+
+                    b.Property<bool>("Lipids")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("Lipids");
+
+                    b.Property<bool>("MMP9")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("MMP9");
+
+                    b.Property<bool>("NT_proBNP")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("NT_proBNP");
+
+                    b.Property<bool>("Protein")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("Protein");
+
+                    b.Property<bool>("RBP4")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("RBP4");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("RecordedAt");
+
+                    b.Property<int>("ReportCount")
+                        .HasColumnType("int")
+                        .HasColumnName("ReportCount");
+
+                    b.Property<bool>("S100B")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("S100B");
+
+                    b.Property<int>("UserID")
+                        .HasColumnType("int")
+                        .HasColumnName("UserID");
+
+                    b.Property<bool>("VonWillebrand")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("vonWillebrand");
+
+                    b.Property<bool>("sRAGE")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("sRAGE");
+
+                    b.HasKey("SubclinicalIndicatorID");
+
+                    b.HasIndex("UserID");
+
+                    b.ToTable("subclinical_indicator");
                 });
 
             modelBuilder.Entity("DATN.Models.UserMedicalData", b =>
@@ -485,6 +865,47 @@ namespace DATN.Migrations
                     b.Navigation("StrokeUser");
                 });
 
+            modelBuilder.Entity("DATN.Models.ClinicalIndicator", b =>
+                {
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StrokeUser");
+                });
+
+            modelBuilder.Entity("DATN.Models.DoctorEvaluation", b =>
+                {
+                    b.HasOne("DATN.Models.CaseHistory", "CaseHistory")
+                        .WithMany()
+                        .HasForeignKey("CaseHistoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DATN.Models.StrokeUser", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CaseHistory");
+
+                    b.Navigation("Doctor");
+                });
+
+            modelBuilder.Entity("DATN.Models.IndicatorSummary", b =>
+                {
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StrokeUser");
+                });
+
             modelBuilder.Entity("DATN.Models.InvitationCode", b =>
                 {
                     b.HasOne("DATN.Models.StrokeUser", "InviterUser")
@@ -494,6 +915,47 @@ namespace DATN.Migrations
                         .IsRequired();
 
                     b.Navigation("InviterUser");
+                });
+
+            modelBuilder.Entity("DATN.Models.MedicalHistoryValue", b =>
+                {
+                    b.HasOne("DATN.Models.MedicalHistoryAttribute", "MedicalHistoryAttribute")
+                        .WithMany()
+                        .HasForeignKey("AttributeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany("MedicalHistoryValues")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("MedicalHistoryAttribute");
+
+                    b.Navigation("StrokeUser");
+                });
+
+            modelBuilder.Entity("DATN.Models.MedicalImage", b =>
+                {
+                    b.HasOne("DATN.Models.CaseHistory", "CaseHistory")
+                        .WithMany()
+                        .HasForeignKey("CaseHistoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CaseHistory");
+                });
+
+            modelBuilder.Entity("DATN.Models.MolecularIndicator", b =>
+                {
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StrokeUser");
                 });
 
             modelBuilder.Entity("DATN.Models.Relationship", b =>
@@ -513,6 +975,17 @@ namespace DATN.Migrations
                     b.Navigation("Inviter");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("DATN.Models.SubclinicalIndicator", b =>
+                {
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany()
+                        .HasForeignKey("UserID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StrokeUser");
                 });
 
             modelBuilder.Entity("DATN.Models.UserMedicalData", b =>
@@ -593,6 +1066,8 @@ namespace DATN.Migrations
                     b.Navigation("CaseHistories");
 
                     b.Navigation("InvitationCodes");
+
+                    b.Navigation("MedicalHistoryValues");
 
                     b.Navigation("Relationships");
 
