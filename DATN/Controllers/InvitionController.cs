@@ -10,6 +10,7 @@ using System.Security.Claims;
 
 namespace DATN.Controllers
 {
+
     [ApiController]
     [Route("api/[controller]")]
     public class InvitionController : ControllerBase
@@ -22,34 +23,42 @@ namespace DATN.Controllers
 
         [HttpPost("create-invitation")]
         [Authorize] 
-        public async Task<IActionResult> CreateInvitationCode()
+        public async Task<IActionResult> CreateInvitationCode(int userId)
         {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-
-            // check exist user
-            var inviterExists = await _dBContext.StrokeUsers.AnyAsync(u => u.UserId == currentUserId);
-            if (!inviterExists)
+            var code = Guid.NewGuid().ToString(); // random code
+                                                  // check exist user
+            var userExist = await _dBContext.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
+            if (userExist == null)
             {
-                return BadRequest("User does not exist.");
+                return NotFound("User does not exist.");
             }
-
-            // create invite code
-            var invitationCode = new InvitationCode
+            var inviterExists = await _dBContext.InvitationCodes.FirstOrDefaultAsync(u => u.InviterUserId == userExist.UserId);
+            if (inviterExists == null)
             {
-                Code = Guid.NewGuid().ToString(), // random token
-                InviterUserId = currentUserId,
-                Status = "active",
-                CreatedAt = DateTime.UtcNow,
-                ExpiresAt = DateTime.UtcNow.AddDays(1) // expired after 1 days
-            };
+                var invitationCode = new InvitationCode
+                {
+                    Code = code,
+                    InviterUserId = userExist.UserId,
+                    Status = "active",
+                    CreatedAt = DateTime.UtcNow,
+                    ExpiresAt = DateTime.UtcNow.AddDays(1) // expired after 1 days
+                };
 
-            _dBContext.InvitationCodes.Add(invitationCode);
-            await _dBContext.SaveChangesAsync();
+                _dBContext.InvitationCodes.Add(invitationCode);
+                await _dBContext.SaveChangesAsync();
+            }
+            else
+            {
+                inviterExists.Code = code;
+                inviterExists.CreatedAt = DateTime.UtcNow;
+                _dBContext.InvitationCodes.Update(inviterExists);
+                await _dBContext.SaveChangesAsync();
+            }
 
             return Ok(new
             {
                 message = "Invitation code created successfully",
-                code = invitationCode.Code
+                code
             });
         }
 
@@ -58,7 +67,7 @@ namespace DATN.Controllers
         [Authorize]
         public async Task<IActionResult> UseInvitationCode([FromBody] UseInvitationDto useInvitationDto)
         {
-            var currentUserId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            var invitationUserId = useInvitationDto.userId;
 
             // check invite code
             var invitationCode = await _dBContext.InvitationCodes
@@ -68,18 +77,49 @@ namespace DATN.Controllers
             {
                 return BadRequest("Invalid or expired invitation code.");
             }
+            var Invitation = await _dBContext.InvitationCodes
+                .FirstOrDefaultAsync(i => i.InviterUserId == invitationCode.InviterUserId && i.Status == "active");
+            if (Invitation == null)
+            {
+                return BadRequest("Invalid Invitation");
+            }
+            // check user exist
+            var user = await _dBContext.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == Invitation.InviterUserId);
+            if (user == null)
+            {
+                return NotFound("User does not exist.");
+            }
+            // check user exist
+            var userInvitation = await _dBContext.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == invitationUserId);
+            if (userInvitation == null)
+            {
+                return NotFound("User does not exist.");
+            }
+            // check relationship exist
+            var relationshipExists = await _dBContext.Relationships
+                .FirstOrDefaultAsync(r => r.UserId == user.UserId && r.InviterId == userInvitation.UserId);
+            if (relationshipExists != null)
+            {
+                return BadRequest("Relationship already exists.");
+            }
+            // check relationship equal userId
 
+            if (user.UserId == userInvitation.UserId)
+            {
+                return BadRequest("Relationship don't create with my mine");
+            }
             // create relationship
             var relationship = new Relationship
             {
-                UserId = currentUserId,
-                InviterId = invitationCode.InviterUserId,
+                UserId = user.UserId,
+                InviterId = userInvitation.UserId,
                 RelationshipType = "family", // type of relationship
                 CreatedAt = DateTime.UtcNow
             };
 
-             // Mark the token has been used
+            // Mark the token has been used
             invitationCode.Status = "used";
+            _dBContext.InvitationCodes.Remove(invitationCode);
 
             _dBContext.Relationships.Add(relationship);
             await _dBContext.SaveChangesAsync();
@@ -87,7 +127,25 @@ namespace DATN.Controllers
             return Ok("Invitation code used successfully. Relationship created.");
         }
 
+        [HttpDelete("delete-relationship${id}")]
+        [Authorize]
+        public async Task<IActionResult> DeleteRelationship(int id)
+        {
+            var relationship = await _dBContext.Relationships
+                .FirstOrDefaultAsync(r => r.RelationshipId == id);
+            if (relationship == null)
+            {
+                return NotFound("Relationship not found.");
+            }
+            _dBContext.Relationships.Remove(relationship);
+            await _dBContext.SaveChangesAsync();
+            return Ok("Relationship deleted successfully.");
+        }
+
+
     }
+
+
 }
 
 

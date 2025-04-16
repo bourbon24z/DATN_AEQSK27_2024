@@ -22,6 +22,8 @@ namespace DATN.Data
         public DbSet<Role> Roles { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
 
+        public DbSet<Gps> Gps { get; set; } // DbSet for GPS data
+
 
         // DbSet for stroke
         public DbSet<DoctorEvaluation> DoctorEvaluations { get; set; }
