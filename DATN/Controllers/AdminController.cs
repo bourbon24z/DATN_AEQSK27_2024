@@ -125,7 +125,7 @@ namespace DATN.Controllers
 
 
 
-        [HttpPost("add-admin-role")]
+        [HttpPost("add-admin-role/{userId}")]
         [Authorize(Roles = "admin")]
         //http://localhost:5062/api/admin/add-admin-role
         public async Task<IActionResult> AddAdminRole([FromBody] AddAdminRoleDto model)
@@ -268,7 +268,7 @@ namespace DATN.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
-                [HttpPost("remove-admin/{userId}")]
+        [HttpPost("remove-admin/{userId}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> RemoveAdminFromUser(int userId)
         {

@@ -55,5 +55,10 @@ namespace DATN.Models
         public ICollection<CaseHistory> CaseHistories { get; set; } = new List<CaseHistory>();
 
         public ICollection<UserVerification> UserVerifications { get; set; } = new List<UserVerification>();
+
+        public ICollection <MedicalHistoryValue> MedicalHistoryValues { get; set; } = new List<MedicalHistoryValue>();
+
+
     }
 }
+

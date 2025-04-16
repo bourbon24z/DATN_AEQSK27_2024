@@ -23,6 +23,18 @@ namespace DATN.Data
         public DbSet<UserRole> UserRoles { get; set; }
 
 
+        // Các DbSet cho bảng chẩn đoán đột quỵ
+        public DbSet<DoctorEvaluation> DoctorEvaluations { get; set; }
+        public DbSet<MedicalImage> MedicalImages { get; set; }
+        public DbSet<IndicatorSummary> IndicatorSummaries { get; set; }
+        public DbSet<ClinicalIndicator> ClinicalIndicators { get; set; }
+        public DbSet<MolecularIndicator> MolecularIndicators { get; set; }
+        public DbSet<SubclinicalIndicator> SubclinicalIndicators { get; set; }
+
+        // Các DbSet cho bảng EAV dạng checklist
+        public DbSet<MedicalHistoryAttribute> MedicalHistoryAttributes { get; set; }
+        public DbSet<MedicalHistoryValue> MedicalHistoryValues { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // 1. StrokeUser
@@ -146,6 +158,7 @@ namespace DATN.Data
 
                 entity.HasOne(r => r.Inviter)
                       .WithMany() 
+
                       .HasForeignKey(r => r.InviterId)
                       .OnDelete(DeleteBehavior.NoAction);
             });
@@ -244,7 +257,22 @@ namespace DATN.Data
                       .OnDelete(DeleteBehavior.Cascade)
                       .HasConstraintName("FK_UserVerifications_StrokeUser");
             });
-        }
+                modelBuilder.Entity<MedicalHistoryValue>()
+               .HasKey(mhv => new { mhv.UserId, mhv.AttributeId });
+
+               
+                modelBuilder.Entity<MedicalHistoryValue>()
+                    .HasOne(mhv => mhv.StrokeUser)
+                    .WithMany(su => su.MedicalHistoryValues)
+                    .HasForeignKey(mhv => mhv.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                modelBuilder.Entity<MedicalHistoryValue>()
+                    .HasOne(mhv => mhv.MedicalHistoryAttribute)
+                    .WithMany()
+                    .HasForeignKey(mhv => mhv.AttributeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
