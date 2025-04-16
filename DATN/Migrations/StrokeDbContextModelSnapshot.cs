@@ -193,6 +193,38 @@ namespace DATN.Migrations
                     b.ToTable("doctor_evaluations");
                 });
 
+            modelBuilder.Entity("DATN.Models.Gps", b =>
+                {
+                    b.Property<int>("GpsId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("gps_id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("GpsId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("created_at");
+
+                    b.Property<float>("Lat")
+                        .HasColumnType("float")
+                        .HasColumnName("lat");
+
+                    b.Property<float>("Lon")
+                        .HasColumnType("float")
+                        .HasColumnName("long");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("GpsId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("gps");
+                });
+
             modelBuilder.Entity("DATN.Models.IndicatorSummary", b =>
                 {
                     b.Property<int>("SummaryID")
@@ -512,11 +544,6 @@ namespace DATN.Migrations
                     b.Property<bool>("Gender")
                         .HasColumnType("tinyint(1)")
                         .HasColumnName("gender");
-
-                    b.Property<string>("Gps")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
-                        .HasColumnName("gps");
 
                     b.Property<bool>("IsVerified")
                         .ValueGeneratedOnAdd()
@@ -895,6 +922,17 @@ namespace DATN.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("DATN.Models.Gps", b =>
+                {
+                    b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
+                        .WithMany("Gps")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("StrokeUser");
+                });
+
             modelBuilder.Entity("DATN.Models.IndicatorSummary", b =>
                 {
                     b.HasOne("DATN.Models.StrokeUser", "StrokeUser")
@@ -1064,6 +1102,8 @@ namespace DATN.Migrations
             modelBuilder.Entity("DATN.Models.StrokeUser", b =>
                 {
                     b.Navigation("CaseHistories");
+
+                    b.Navigation("Gps");
 
                     b.Navigation("InvitationCodes");
 

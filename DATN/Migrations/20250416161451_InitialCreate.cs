@@ -89,9 +89,7 @@ namespace DATN.Migrations
                     email = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    is_verified = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
-                    gps = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true)
-                        .Annotation("MySql:CharSet", "utf8mb4")
+                    is_verified = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -179,6 +177,29 @@ namespace DATN.Migrations
                     table.ForeignKey(
                         name: "FK_clinical_indicator_stroke_user_UserID",
                         column: x => x.UserID,
+                        principalTable: "stroke_user",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "gps",
+                columns: table => new
+                {
+                    gps_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    @long = table.Column<float>(name: "long", type: "float", nullable: false),
+                    lat = table.Column<float>(type: "float", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_gps", x => x.gps_id);
+                    table.ForeignKey(
+                        name: "FK_gps_stroke_user_user_id",
+                        column: x => x.user_id,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -554,6 +575,11 @@ namespace DATN.Migrations
                 column: "doctor_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_gps_user_id",
+                table: "gps",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_indicator_summary_UserID",
                 table: "indicator_summary",
                 column: "UserID");
@@ -637,6 +663,9 @@ namespace DATN.Migrations
 
             migrationBuilder.DropTable(
                 name: "doctor_evaluations");
+
+            migrationBuilder.DropTable(
+                name: "gps");
 
             migrationBuilder.DropTable(
                 name: "indicator_summary");

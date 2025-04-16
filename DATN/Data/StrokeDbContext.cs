@@ -23,7 +23,7 @@ namespace DATN.Data
         public DbSet<UserRole> UserRoles { get; set; }
 
 
-        // Các DbSet cho bảng chẩn đoán đột quỵ
+        // DbSet for stroke
         public DbSet<DoctorEvaluation> DoctorEvaluations { get; set; }
         public DbSet<MedicalImage> MedicalImages { get; set; }
         public DbSet<IndicatorSummary> IndicatorSummaries { get; set; }
@@ -31,7 +31,7 @@ namespace DATN.Data
         public DbSet<MolecularIndicator> MolecularIndicators { get; set; }
         public DbSet<SubclinicalIndicator> SubclinicalIndicators { get; set; }
 
-        // Các DbSet cho bảng EAV dạng checklist
+        // DbSet for EAV
         public DbSet<MedicalHistoryAttribute> MedicalHistoryAttributes { get; set; }
         public DbSet<MedicalHistoryValue> MedicalHistoryValues { get; set; }
 
@@ -54,10 +54,7 @@ namespace DATN.Data
                 entity.Property(u => u.IsVerified)
                       .HasColumnName("is_verified")
                       .HasDefaultValue(false);
-                entity.Property(u => u.Gps)
-                      .HasColumnName("gps")
-                      .HasMaxLength(255)
-                      .IsRequired(false);
+               
             });
 
             // 2. Warning
@@ -257,8 +254,14 @@ namespace DATN.Data
                       .OnDelete(DeleteBehavior.Cascade)
                       .HasConstraintName("FK_UserVerifications_StrokeUser");
             });
+                modelBuilder.Entity<Gps>()
+                        .HasOne(g => g.StrokeUser)
+                        .WithMany(s => s.Gps)
+                        .HasForeignKey(g => g.UserId)
+                        .OnDelete(DeleteBehavior.Cascade);
+
                 modelBuilder.Entity<MedicalHistoryValue>()
-               .HasKey(mhv => new { mhv.UserId, mhv.AttributeId });
+                        .HasKey(mhv => new { mhv.UserId, mhv.AttributeId });
 
                
                 modelBuilder.Entity<MedicalHistoryValue>()
