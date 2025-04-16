@@ -386,6 +386,51 @@ namespace DATN.Controllers
             }
         }
 
+        [HttpPost("user_gps")]
+        
+        public async Task<IActionResult> PostUserGPS([FromBody] UserGpsDto userGpsDto)
+        {
+            var user = await _context.StrokeUsers
+                .FirstOrDefaultAsync(u => u.UserId == userGpsDto.UserId);
+            var existingGps = await _context.Gps
+                .FirstOrDefaultAsync(g => g.UserId == user.UserId);
+            if (existingGps != null)
+            {
+                _context.Gps.Remove(existingGps);
+            }
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+            var gpsData = new Gps
+            {
+                UserId = user.UserId,
+                Lon = userGpsDto.Long,
+                Lat = userGpsDto.Lat,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Gps.Add(gpsData);
+            await _context.SaveChangesAsync();
+            return Ok("GPS data saved successfully.");
+        }
+
+        [HttpGet("user_gps")]
+        
+        public async Task<IActionResult> GetUserGPS(int userId)
+        {
+            var user = await _context.StrokeUsers
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+            var gpsData = await _context.Gps.FirstOrDefaultAsync(g => g.UserId == userId);
+            return Ok(gpsData);
+        }
+
 
     }
+
+
 }
+
