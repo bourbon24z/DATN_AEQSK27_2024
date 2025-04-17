@@ -10,7 +10,7 @@ namespace DATN.Models
         public float? DiastolicPressure { get; set; }
         public float? Temperature { get; set; }
         public float? BloodPh { get; set; }
-        public DateTime? RecordedAt { get; set; }
+        public DateTime RecordedAt { get; set; }
         public float? Spo2Information { get; set; }
         public float? HeartRate { get; set; }
         public DateTime CreatedAt { get; set; }

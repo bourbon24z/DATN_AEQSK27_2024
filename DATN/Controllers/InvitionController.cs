@@ -151,7 +151,25 @@ namespace DATN.Controllers
 				.Include(r => r.Inviter)
 				.Where(r => r.UserId == userId)
 				.ToListAsync();
-			return Ok(relationships);
+            List< RelationshipDTO> relationshipDTOs = new List< RelationshipDTO>();
+			foreach (var relationship in relationships)
+            {
+                var user = await _dBContext.StrokeUsers.FirstOrDefaultAsync(r => r.UserId == relationship.InviterId);
+                var relationshipDTO = new RelationshipDTO
+                {
+                    RelationshipId = relationship.RelationshipId,
+                    UserId = relationship.UserId,
+                    InviterId = relationship.InviterId,
+                    NameInviter = user.PatientName,
+                    EmailInviter = user.Email,
+                    RelationshipType = relationship.RelationshipType,
+                    CreatedAt = relationship.CreatedAt
+                };
+                relationshipDTOs.Add(relationshipDTO);
+
+			}
+                
+			return Ok(relationshipDTOs);
 		}
 
 
