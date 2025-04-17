@@ -1,6 +1,7 @@
 ﻿using DATN.Data;
 using DATN.Dto;
 using DATN.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,8 @@ namespace DATN.Controllers
 			_context = context;
 		}
 		[HttpPost("add-clinical-indicator")]
-		public async Task<IActionResult> AddClinicalIndicator([FromBody] ClinicalIndicatorDTO clinicalIndicatorDTO)
+		[Authorize (Roles = "user")]
+        public async Task<IActionResult> AddClinicalIndicator([FromBody] ClinicalIndicatorDTO clinicalIndicatorDTO)
 		{
 			if (clinicalIndicatorDTO == null)
 			{
@@ -50,7 +52,9 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("add-molecular-indicator")]
-		public async Task<IActionResult> AddMolecularIndicator([FromBody] MolecularIndicatorDTO molecularIndicatorDTO)
+		[Authorize (Roles = "admin")]
+        //[Authorize (Roles = "doctor")]
+        public async Task<IActionResult> AddMolecularIndicator([FromBody] MolecularIndicatorDTO molecularIndicatorDTO)
 		{
 			if (molecularIndicatorDTO == null)
 			{
@@ -83,7 +87,11 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("add-subclinical-Indicator")]
-		public async Task<IActionResult> AddSubclinicalIndicator([FromBody] SubclinicalIndicatorDTO subclinicalIndicatorDTO)
+        [Authorize(Roles = "admin")]
+        //[Authorize (Roles = "doctor")]
+
+
+        public async Task<IActionResult> AddSubclinicalIndicator([FromBody] SubclinicalIndicatorDTO subclinicalIndicatorDTO)
 		{
 			if (subclinicalIndicatorDTO == null)
 			{
@@ -117,7 +125,9 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("get-indicator/{userId}")]
-		public async Task<IActionResult> GetIndicator(int userId)
+        [Authorize(Roles = "admin")]
+        //[Authorize (Roles = "doctor")]
+        public async Task<IActionResult> GetIndicator(int userId)
 		{
 			var clinicalIndicator = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == userId&& x.IsActived==true);
 			var molecularIndicator = await _context.MolecularIndicators.FirstOrDefaultAsync(x => x.UserID == userId&& x.IsActived==true);
@@ -134,7 +144,9 @@ namespace DATN.Controllers
 			});
 		}
 		[HttpGet("get-percent-indicator-is-true")]
-		public async Task<IActionResult> GetPercentIndicatorIsTrue(int userId)
+        [Authorize(Roles = "admin")]
+        //[Authorize (Roles = "doctor")]
+        public async Task<IActionResult> GetPercentIndicatorIsTrue(int userId)
 		{
 			var clinicalIndicator = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == userId && x.IsActived == true);
 			var molecularIndicator = await _context.MolecularIndicators.FirstOrDefaultAsync(x => x.UserID == userId && x.IsActived == true);
