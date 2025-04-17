@@ -22,7 +22,7 @@ namespace DATN.Controllers
         }
 
         [HttpPost("create-invitation")]
-        [Authorize] 
+        //[Authorize] 
         public async Task<IActionResult> CreateInvitationCode(int userId)
         {
             var code = Guid.NewGuid().ToString(); // random code
@@ -64,7 +64,7 @@ namespace DATN.Controllers
 
 
         [HttpPost("use-invitation")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> UseInvitationCode([FromBody] UseInvitationDto useInvitationDto)
         {
             var invitationUserId = useInvitationDto.userId;
@@ -128,7 +128,7 @@ namespace DATN.Controllers
         }
 
         [HttpDelete("delete-relationship${id}")]
-        [Authorize]
+        //[Authorize]
         public async Task<IActionResult> DeleteRelationship(int id)
         {
             var relationship = await _dBContext.Relationships
@@ -141,9 +141,21 @@ namespace DATN.Controllers
             await _dBContext.SaveChangesAsync();
             return Ok("Relationship deleted successfully.");
         }
+		[HttpGet("get-relationship")]
+		//[Authorize]
+		public async Task<IActionResult> GetRelationship(int userId)
+		{
+			
+			var relationships = await _dBContext.Relationships
+				.Include(r => r.User)
+				.Include(r => r.Inviter)
+				.Where(r => r.UserId == userId)
+				.ToListAsync();
+			return Ok(relationships);
+		}
 
 
-    }
+	}
 
 
 }

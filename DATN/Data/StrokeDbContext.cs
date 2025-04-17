@@ -162,26 +162,32 @@ namespace DATN.Data
                       .OnDelete(DeleteBehavior.NoAction);
             });
 
-            // 7. Device
-            modelBuilder.Entity<Device>(entity =>
-            {
-                entity.ToTable("device");
-                entity.HasKey(d => d.DeviceId);
-                entity.Property(d => d.DeviceId).HasColumnName("device_id");
-                entity.Property(d => d.DeviceName).HasColumnName("device_name");
-                entity.Property(d => d.DeviceType).HasColumnName("device_type");
-                entity.Property(d => d.Series)
-                          .HasColumnName("series")
-                          .HasMaxLength(50);
-            });
+			// 7. Device
+			modelBuilder.Entity<Device>(entity =>
+			{
+				entity.ToTable("device");
+				entity.HasKey(d => d.DeviceId);
+				entity.Property(d => d.DeviceId).HasColumnName("device_id");
+				entity.Property(d => d.DeviceName).HasColumnName("device_name");
+				entity.Property(d => d.DeviceType).HasColumnName("device_type");
+				entity.Property(d => d.Series).HasColumnName("series").HasMaxLength(50);
 
-            // 8. UserMedicalData
-            modelBuilder.Entity<UserMedicalData>(entity =>
+				// Thêm khóa ngoại StrokeUserUserId
+				entity.Property(d => d.UserId).HasColumnName("stroke_user_user_id");
+
+				entity.HasOne(d => d.User)
+					  .WithMany(u => u.Devices)
+					  .HasForeignKey(d => d.UserId)
+					  .OnDelete(DeleteBehavior.Cascade)
+					  .HasConstraintName("FK_device_stroke_user_StrokeUserUserId");
+			});
+
+			// 8. UserMedicalData
+			modelBuilder.Entity<UserMedicalData>(entity =>
             {
                 entity.ToTable("user_medical_data");
                 entity.HasKey(umd => umd.UserMedicalDataId);
                 entity.Property(umd => umd.UserMedicalDataId).HasColumnName("user_medical_data_id");
-                entity.Property(umd => umd.UserId).HasColumnName("user_id");
                 entity.Property(umd => umd.DeviceId).HasColumnName("device_id");
                 entity.Property(umd => umd.SystolicPressure).HasColumnName("systolic_pressure");
                 entity.Property(umd => umd.DiastolicPressure).HasColumnName("diastolic_pressure");
@@ -193,10 +199,6 @@ namespace DATN.Data
                 entity.Property(umd => umd.CreatedAt).HasColumnName("created_at");
                 entity.Property(umd => umd.UpdatedAt).HasColumnName("updated_at");
 
-                entity.HasOne(umd => umd.User)
-                      .WithMany(u => u.UserMedicalDatas)
-                      .HasForeignKey(umd => umd.UserId)
-                      .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(umd => umd.Device)
                       .WithMany(d => d.UserMedicalDatas)

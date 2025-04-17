@@ -2,6 +2,7 @@
 {
     public class UseInvitationDto
     {
-        public string Code { get; set; }
+        public int userId { get; set; }
+		public string Code { get; set; }
     }
 }
