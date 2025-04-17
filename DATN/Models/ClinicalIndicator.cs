@@ -14,7 +14,7 @@ namespace DATN.Models
         public int UserID { get; set; }
 
         [Column("IsActived")]
-        public bool IsActived { get; set; } = true;
+        public bool IsActived { get; set; } = false;
 
         [Column("RecordedAt", TypeName = "datetime(6)")]
         public DateTime RecordedAt { get; set; }

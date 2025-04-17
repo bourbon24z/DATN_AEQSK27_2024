@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace DATN.Models
 {
@@ -25,6 +26,7 @@ namespace DATN.Models
         public DateTime CreatedAt { get; set; }
 
         [ForeignKey("UserId")]
-        public virtual StrokeUser StrokeUser { get; set; }
+        [JsonIgnore]
+		public virtual StrokeUser StrokeUser { get; set; }
     }
 }

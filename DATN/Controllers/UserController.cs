@@ -425,7 +425,11 @@ namespace DATN.Controllers
                 return NotFound("User not found.");
             }
             var gpsData = await _context.Gps.FirstOrDefaultAsync(g => g.UserId == userId);
-            return Ok(gpsData);
+			if (gpsData == null)
+			{
+				return NotFound("GPS data not found.");
+			}
+			return Ok(gpsData);
         }
 
 

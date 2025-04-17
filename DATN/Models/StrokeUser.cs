@@ -38,9 +38,6 @@ namespace DATN.Models
 
         [Column("is_verified")]
         public bool IsVerified { get; set; }
-
-
-
         public virtual ICollection<Gps> Gps { get; set; } = new List<Gps>();
         public ICollection<InvitationCode> InvitationCodes { get; set; }
 
@@ -48,7 +45,7 @@ namespace DATN.Models
 
         public ICollection<UserRole> UserRoles { get; set; }
 
-        public ICollection<UserMedicalData> UserMedicalDatas { get; set; } = new List<UserMedicalData>();
+        public ICollection<Device> Devices { get; set; } = new List<Device>();
 
         public ICollection<Warning> Warnings { get; set; } = new List<Warning>();
 

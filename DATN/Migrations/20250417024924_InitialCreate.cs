@@ -16,25 +16,6 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "device",
-                columns: table => new
-                {
-                    device_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    device_name = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    device_type = table.Column<string>(type: "longtext", nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
-                    series = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_device", x => x.device_id);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "medicalhistoryattributes",
                 columns: table => new
                 {
@@ -177,6 +158,32 @@ namespace DATN.Migrations
                     table.ForeignKey(
                         name: "FK_clinical_indicator_stroke_user_UserID",
                         column: x => x.UserID,
+                        principalTable: "stroke_user",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "device",
+                columns: table => new
+                {
+                    device_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    stroke_user_user_id = table.Column<int>(type: "int", nullable: false),
+                    device_name = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    device_type = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    series = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_device", x => x.device_id);
+                    table.ForeignKey(
+                        name: "FK_device_stroke_user_StrokeUserUserId",
+                        column: x => x.stroke_user_user_id,
                         principalTable: "stroke_user",
                         principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
@@ -379,42 +386,6 @@ namespace DATN.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "user_medical_data",
-                columns: table => new
-                {
-                    user_medical_data_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
-                    user_id = table.Column<int>(type: "int", nullable: false),
-                    device_id = table.Column<int>(type: "int", nullable: true),
-                    systolic_pressure = table.Column<float>(type: "float", nullable: true),
-                    diastolic_pressure = table.Column<float>(type: "float", nullable: true),
-                    temperature = table.Column<float>(type: "float", nullable: true),
-                    blood_ph = table.Column<float>(type: "float", nullable: true),
-                    recorded_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    spo2_information = table.Column<float>(type: "float", nullable: true),
-                    heart_rate = table.Column<float>(type: "float", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
-                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_user_medical_data", x => x.user_medical_data_id);
-                    table.ForeignKey(
-                        name: "FK_user_medical_data_device_device_id",
-                        column: x => x.device_id,
-                        principalTable: "device",
-                        principalColumn: "device_id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_user_medical_data_stroke_user_user_id",
-                        column: x => x.user_id,
-                        principalTable: "stroke_user",
-                        principalColumn: "user_id",
-                        onDelete: ReferentialAction.Cascade);
-                })
-                .Annotation("MySql:CharSet", "utf8mb4");
-
-            migrationBuilder.CreateTable(
                 name: "user_roles",
                 columns: table => new
                 {
@@ -554,6 +525,35 @@ namespace DATN.Migrations
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
+            migrationBuilder.CreateTable(
+                name: "user_medical_data",
+                columns: table => new
+                {
+                    user_medical_data_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("MySql:ValueGenerationStrategy", MySqlValueGenerationStrategy.IdentityColumn),
+                    device_id = table.Column<int>(type: "int", nullable: true),
+                    systolic_pressure = table.Column<float>(type: "float", nullable: true),
+                    diastolic_pressure = table.Column<float>(type: "float", nullable: true),
+                    temperature = table.Column<float>(type: "float", nullable: true),
+                    blood_ph = table.Column<float>(type: "float", nullable: true),
+                    recorded_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    spo2_information = table.Column<float>(type: "float", nullable: true),
+                    heart_rate = table.Column<float>(type: "float", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_user_medical_data", x => x.user_medical_data_id);
+                    table.ForeignKey(
+                        name: "FK_user_medical_data_device_device_id",
+                        column: x => x.device_id,
+                        principalTable: "device",
+                        principalColumn: "device_id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
             migrationBuilder.CreateIndex(
                 name: "IX_case_history_user_id",
                 table: "case_history",
@@ -563,6 +563,11 @@ namespace DATN.Migrations
                 name: "IX_clinical_indicator_UserID",
                 table: "clinical_indicator",
                 column: "UserID");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_device_stroke_user_user_id",
+                table: "device",
+                column: "stroke_user_user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_doctor_evaluations_case_history_id",
@@ -623,11 +628,6 @@ namespace DATN.Migrations
                 name: "IX_user_medical_data_device_id",
                 table: "user_medical_data",
                 column: "device_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_user_medical_data_user_id",
-                table: "user_medical_data",
-                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_user_roles_role_id",

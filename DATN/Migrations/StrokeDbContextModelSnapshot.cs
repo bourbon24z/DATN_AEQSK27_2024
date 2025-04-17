@@ -153,7 +153,13 @@ namespace DATN.Migrations
                         .HasColumnType("varchar(50)")
                         .HasColumnName("series");
 
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("stroke_user_user_id");
+
                     b.HasKey("DeviceId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("device", (string)null);
                 });
@@ -697,15 +703,9 @@ namespace DATN.Migrations
                         .HasColumnType("datetime(6)")
                         .HasColumnName("updated_at");
 
-                    b.Property<int>("UserId")
-                        .HasColumnType("int")
-                        .HasColumnName("user_id");
-
                     b.HasKey("UserMedicalDataId");
 
                     b.HasIndex("DeviceId");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("user_medical_data", (string)null);
                 });
@@ -903,6 +903,18 @@ namespace DATN.Migrations
                     b.Navigation("StrokeUser");
                 });
 
+            modelBuilder.Entity("DATN.Models.Device", b =>
+                {
+                    b.HasOne("DATN.Models.StrokeUser", "User")
+                        .WithMany("Devices")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_device_stroke_user_StrokeUserUserId");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DATN.Models.DoctorEvaluation", b =>
                 {
                     b.HasOne("DATN.Models.CaseHistory", "CaseHistory")
@@ -1033,15 +1045,7 @@ namespace DATN.Migrations
                         .HasForeignKey("DeviceId")
                         .OnDelete(DeleteBehavior.Cascade);
 
-                    b.HasOne("DATN.Models.StrokeUser", "User")
-                        .WithMany("UserMedicalDatas")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Device");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("DATN.Models.UserRole", b =>
@@ -1103,6 +1107,8 @@ namespace DATN.Migrations
                 {
                     b.Navigation("CaseHistories");
 
+                    b.Navigation("Devices");
+
                     b.Navigation("Gps");
 
                     b.Navigation("InvitationCodes");
@@ -1110,8 +1116,6 @@ namespace DATN.Migrations
                     b.Navigation("MedicalHistoryValues");
 
                     b.Navigation("Relationships");
-
-                    b.Navigation("UserMedicalDatas");
 
                     b.Navigation("UserRoles");
 
