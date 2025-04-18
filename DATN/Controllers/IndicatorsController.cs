@@ -18,7 +18,7 @@ namespace DATN.Controllers
 			_context = context;
 		}
 		[HttpPost("add-clinical-indicator")]
-		[Authorize (Roles = "user")]
+		//[Authorize (Roles = "user")]
         public async Task<IActionResult> AddClinicalIndicator([FromBody] ClinicalIndicatorDTO clinicalIndicatorDTO)
 		{
 			if (clinicalIndicatorDTO == null)
@@ -52,7 +52,7 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("add-molecular-indicator")]
-		[Authorize (Roles = "admin")]
+		//[Authorize (Roles = "admin")]
         //[Authorize (Roles = "doctor")]
         public async Task<IActionResult> AddMolecularIndicator([FromBody] MolecularIndicatorDTO molecularIndicatorDTO)
 		{
@@ -87,7 +87,7 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("add-subclinical-Indicator")]
-        [Authorize(Roles = "admin")]
+        //[Authorize(Roles = "admin")]
         //[Authorize (Roles = "doctor")]
 
 
@@ -125,7 +125,7 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("get-indicator/{userId}")]
-        [Authorize(Roles = "admin")]
+        //[Authorize(Roles = "admin")]
         //[Authorize (Roles = "doctor")]
         public async Task<IActionResult> GetIndicator(int userId)
 		{
@@ -144,7 +144,7 @@ namespace DATN.Controllers
 			});
 		}
 		[HttpGet("get-percent-indicator-is-true")]
-        [Authorize(Roles = "admin")]
+        //[Authorize(Roles = "admin")]
         //[Authorize (Roles = "doctor")]
         public async Task<IActionResult> GetPercentIndicatorIsTrue(int userId)
 		{

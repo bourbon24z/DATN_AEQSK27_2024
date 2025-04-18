@@ -1,10 +1,12 @@
 ﻿using DATN.Data;
 using DATN.Dto;
+using DATN.Helper;
 using DATN.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using static DATN.Helper.MedicalDataHelper;
 
 namespace DATN.Controllers
 {
@@ -141,6 +143,27 @@ namespace DATN.Controllers
 				return NotFound("Không có dữ liệu trong 14 ngày gần nhất.");
 			}
 
+			var averageAll14Day = new AverageMedicalData
+			{
+				Temperature = data.Average(d => d.Temperature),
+				SpO2 = data.Average(d => d.Spo2Information),
+				HeartRate = data.Average(d => d.HeartRate),
+				BloodPh = data.Average(d => d.BloodPh),
+				SystolicPressure = data.Average(d => d.SystolicPressure),
+				DiastolicPressure = data.Average(d => d.DiastolicPressure),
+
+			};
+			var dataPercent = MedicalDataHelper.GetPercentAverageMedicalData(averageAll14Day);
+			var warning = new List<object>();
+			warning.Add(new
+			{
+				Temperature = MedicalDataHelper.getWarningTemperature(dataPercent.Temperature),
+				SpO2 = MedicalDataHelper.getWarningSpO2(dataPercent.SpO2),
+				HeartRate = MedicalDataHelper.getWarningHeartRate(dataPercent.HeartRate),
+				BloodPh = MedicalDataHelper.getWarningBloodPh(dataPercent.BloodPh),
+				SystolicPressure = MedicalDataHelper.getWarningSystolicPressure(dataPercent.SystolicPressure),
+				DiastolicPressure = MedicalDataHelper.getWarningDiastolicPressure(dataPercent.DiastolicPressure)
+			});
 			// Tạo danh sách kết quả theo ngày
 			var result = new List<object>();
 
@@ -158,8 +181,10 @@ namespace DATN.Controllers
 					AverageHeartRate = dailyData.Average(d => d.HeartRate),
 					AverageBloodPh = dailyData.Average(d => d.BloodPh),
 					AverageSystolicPressure = dailyData.Average(d => d.SystolicPressure),
-					AverageDiastolicPressure = dailyData.Average(d => d.DiastolicPressure)
+					AverageDiastolicPressure = dailyData.Average(d => d.DiastolicPressure),
+					
 				} : null;
+				
 
 				// Tính trung bình cho ban ngày (Daily: 6h - 18h)
 				var dailyDayData = dailyData.Where(d => d.RecordedAt.Hour >= 6 && d.RecordedAt.Hour < 18).ToList();
@@ -198,7 +223,12 @@ namespace DATN.Controllers
 				});
 			}
 
-			return Ok(result);
+			return Ok(new {
+				averageAll14Day,
+				dataPercent,
+				warning,
+				result
+			});
 		}
 	}
 
