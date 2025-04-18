@@ -386,7 +386,7 @@ namespace DATN.Controllers
             }
         }
 
-        [HttpPost("user_gps")]
+        [HttpPost("user-gps")]
         
         public async Task<IActionResult> PostUserGPS([FromBody] UserGpsDto userGpsDto)
         {
@@ -414,7 +414,7 @@ namespace DATN.Controllers
             return Ok("GPS data saved successfully.");
         }
 
-        [HttpGet("user_gps")]
+        [HttpGet("user-gps")]
         
         public async Task<IActionResult> GetUserGPS(int userId)
         {
