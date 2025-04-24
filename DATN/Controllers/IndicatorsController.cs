@@ -190,17 +190,24 @@ namespace DATN.Controllers
 			var percent1 = 0;
 			var percent2 = 0;
 			var percent3 = 0;
-			if (totalCount1 != 0)
+			if(totalCount1 > 0 && molecularIndicator==null && subclinicalIndicator==null)
 			{
-				percent1 = (trueCount1 * 30) / totalCount1;
+				percent1 = (trueCount1 * 70) / totalCount1;
 			}
-			if (totalCount2 != 0)
+			else
 			{
-				percent2 = (trueCount2 * 30) / totalCount2;
-			}
-			if (totalCount3 != 0)
-			{
-				percent3 = (trueCount3 * 30) / totalCount3;	
+				if (totalCount1 != 0)
+				{
+					percent1 = (trueCount1 * 30) / totalCount1;
+				}
+				if (totalCount2 != 0)
+				{
+					percent2 = (trueCount2 * 30) / totalCount2;
+				}
+				if (totalCount3 != 0)
+				{
+					percent3 = (trueCount3 * 30) / totalCount3;
+				}
 			}
 			var percent = percent1 + percent2 + percent3;
 			return Ok(new
