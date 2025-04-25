@@ -2,6 +2,7 @@
 using DATN.Data;
 using DATN.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -36,7 +37,10 @@ builder.Services.AddSingleton<IJwtTokenService>(new JwtTokenService(jwtSettings)
 
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5062);
+    options.ListenAnyIP(5062 , listenOptions =>
+    {
+        listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
+    });
 });
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
