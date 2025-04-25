@@ -34,26 +34,10 @@ builder.Services.AddSingleton<IJwtTokenService>(new JwtTokenService(jwtSettings)
 // Configure Kestrel
 builder.WebHost.ConfigureKestrel(options =>
 {
-<<<<<<< HEAD
     options.ListenAnyIP(5062 , listenOptions =>
     {
         listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
     });
-=======
-	options.ListenAnyIP(5062); // Vẫn để backend chạy port 5062
-});
-
-// === Thêm cấu hình CORS ===
-builder.Services.AddCors(options =>
-{
-	options.AddPolicy("AllowFrontend3000", policy =>
-	{
-		policy.WithOrigins("http://localhost:3000")
-			  .AllowAnyHeader()
-			  .AllowAnyMethod()
-			  .AllowCredentials(); // nếu bạn dùng cookie hoặc gửi token qua header
-	});
->>>>>>> c9883c4b126758614ef543725fa0bc33c34fed9e
 });
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -134,7 +118,7 @@ if (app.Environment.IsDevelopment())
 	});
 }
 
-// === Thêm UseCors ===
+
 app.UseCors("AllowFrontend3000");
 
 app.UseAuthentication();
