@@ -4,12 +4,9 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-<<<<<<< HEAD
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-=======
     <UserSecretsId>a9e3f7a0-a1ab-4c01-b4da-cc7ce7b4fd67</UserSecretsId>
     <DockerDefaultTargetOS>Windows</DockerDefaultTargetOS>
->>>>>>> c9883c4b126758614ef543725fa0bc33c34fed9e
   </PropertyGroup>
 
   <ItemGroup>
