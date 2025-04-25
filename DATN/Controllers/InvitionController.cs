@@ -127,7 +127,7 @@ namespace DATN.Controllers
             return Ok("Invitation code used successfully. Relationship created.");
         }
 
-        [HttpDelete("delete-relationship${id}")]
+        [HttpDelete("delete-relationship/{id}")]
         //[Authorize]
         public async Task<IActionResult> DeleteRelationship(int id)
         {
