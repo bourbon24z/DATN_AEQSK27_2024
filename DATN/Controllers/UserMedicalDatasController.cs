@@ -84,7 +84,8 @@ namespace DATN.Controllers
 					AverageSpO3 = g.Average(d => d.Spo2Information),
 					AverageSpO4 = g.Average(d => d.HeartRate),
 					AverageSpO5 = g.Average(d => d.BloodPh),
-					AverageSpO6 = g.Average(d => d.SystolicPressure)
+					AverageSpO6 = g.Average(d => d.SystolicPressure),
+					AverageSp07 = g.Average(d => d.DiastolicPressure)
 				})
 				.OrderBy(d => d.Date)
 				.ToList();

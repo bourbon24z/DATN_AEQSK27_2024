@@ -28,6 +28,7 @@ namespace DATN.Services
                     _logger.LogError(ex, "Error executing email task");
                 }
             }
+            _logger.LogInformation("Email Background Service is stopping");
         }
     }
 

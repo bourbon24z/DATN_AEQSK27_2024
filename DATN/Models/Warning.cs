@@ -25,5 +25,6 @@ namespace DATN.Models
 
         [ForeignKey("UserId")]
         public StrokeUser StrokeUser { get; set; }
+
     }
 }

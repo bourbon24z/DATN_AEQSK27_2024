@@ -21,6 +21,8 @@ builder.Services.AddDbContext<StrokeDbContext>(options =>
 
 builder.Services.AddSingleton<EmailService>();
 builder.Services.AddSingleton<IBackgroundEmailQueue>(new BackgroundEmailQueue(100));
+builder.Services.AddScoped<INotificationService, EmailNotificationService>();
+builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 
 
@@ -103,6 +105,7 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+//builder.Services.AddScoped<INotificationService, NotificationService>();
 
 var app = builder.Build();
 
