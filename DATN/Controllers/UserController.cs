@@ -246,7 +246,7 @@ namespace DATN.Controllers
             if (user == null)
             {
                
-                return Ok("If this email exists in our system, an OTP has been sent for password reset.");
+                return Unauthorized("Email don't exist");
             }
 
             
