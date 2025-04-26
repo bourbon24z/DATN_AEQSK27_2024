@@ -158,7 +158,95 @@ namespace DATN.Controllers
             }
         }
 
-      
+        [HttpPost("add-doctor-role/{userId}")]
+        //http://localhost:5062/api/admin/add-doctor-role
+        public async Task<IActionResult> AddDoctorRole(int userId)
+        {
+            try
+            {
+                var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
+                if (user == null)
+                    return NotFound(new { message = $"User with ID {userId} does not exist." });
+
+                var doctorRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "doctor");
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
+                if (doctorRole == null || userRole == null)
+                    return NotFound(new { message = "The role 'doctor' or 'user' does not exist." });
+
+                var hasDoctor = await _context.UserRoles.AnyAsync(ur => ur.UserId == userId && ur.RoleId == doctorRole.RoleId && ur.IsActive);
+                if (hasDoctor)
+                    return BadRequest(new { message = $"User {userId} already has the 'doctor' role." });
+
+                
+                var userRoleEntity = await _context.UserRoles
+                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
+                if (userRoleEntity != null)
+                {
+                    userRoleEntity.IsActive = false;
+                    // _context.UserRoles.Remove(userRoleEntity); // del thủ công
+                }
+
+                
+                _context.UserRoles.Add(new UserRole
+                {
+                    UserId = userId,
+                    RoleId = doctorRole.RoleId,
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                });
+                await _context.SaveChangesAsync();
+                return Ok(new { message = $"The role 'doctor' has been assigned to user {userId}." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Đã xảy ra lỗi: {ex.Message}" });
+            }
+        }
+
+       
+        [HttpDelete("remove-doctor-role/{userId}")]
+        //http://localhost:5062/api/admin/remove-doctor-role
+        public async Task<IActionResult> RemoveDoctorRole(int userId)
+        {
+            try
+            {
+                var doctorRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "doctor");
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "user");
+                if (doctorRole == null || userRole == null)
+                    return NotFound(new { message = "Role 'doctor' or 'user' does not exitst." });
+
+                var doctorRoleEntity = await _context.UserRoles
+                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == doctorRole.RoleId && ur.IsActive);
+                if (doctorRoleEntity == null)
+                    return NotFound(new { message = $"'Doctor' role does not exist on User {userId}." });
+
+                
+                doctorRoleEntity.IsActive = false;
+                // _context.UserRoles.Remove(doctorRoleEntity); // del thủ công
+
+              
+                var hasUserRole = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
+                if (!hasUserRole)
+                {
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = userId,
+                        RoleId = userRole.RoleId,
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+                return Ok(new { message = $" 'doctor' Role has been deleted." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error: {ex.Message}" });
+            }
+        }
+
         [HttpPost("update-admin-status")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> UpdateAdminStatus(int userId, bool isActive)
