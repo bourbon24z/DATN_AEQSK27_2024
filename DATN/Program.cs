@@ -9,6 +9,7 @@ using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,14 @@ builder.Services.AddSingleton<IBackgroundEmailQueue>(new BackgroundEmailQueue(10
 builder.Services.AddScoped<INotificationService, EmailNotificationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
+//Add Doctor Services
+builder.Services.AddScoped<IDoctorService, DoctorService>();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+        options.JsonSerializerOptions.MaxDepth = 64;  
+    });
 
 // Configure JWT
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
