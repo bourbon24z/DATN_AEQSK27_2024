@@ -43,10 +43,7 @@ builder.Services.AddSingleton<IJwtTokenService>(new JwtTokenService(jwtSettings)
 // Configure Kestrel
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.ListenAnyIP(5062 , listenOptions =>
-    {
-        listenOptions.Protocols = HttpProtocols.Http1AndHttp2;
-    });
+    options.ListenAnyIP(5062);
 });
 
 JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
@@ -127,6 +124,8 @@ if (app.Environment.IsDevelopment())
 	});
 }
 
+// === Thêm UseCors ===
+app.UseCors("AllowFrontend3000");
 
 app.UseCors("AllowFrontend3000");
 
