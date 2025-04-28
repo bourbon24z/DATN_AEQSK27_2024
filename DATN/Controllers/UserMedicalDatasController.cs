@@ -2,6 +2,7 @@
 using DATN.Dto;
 using DATN.Helper;
 using DATN.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("medicaldata")]
-		public async Task<IActionResult> AddMedicalData([FromBody]MedicalDataDTO medicalData)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> AddMedicalData([FromBody]MedicalDataDTO medicalData)
 		{
 			var device = await _context.Device.FirstOrDefaultAsync(d => d.Series == medicalData.Series);
 			if (device == null)
@@ -48,7 +50,8 @@ namespace DATN.Controllers
 
 
 		[HttpGet("daily/{date}/{deviceId}")]
-		public async Task<IActionResult> GetDataByDate(DateTime date,int deviceId)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> GetDataByDate(DateTime date,int deviceId)
 		{
 			if (date == null || deviceId == null)
 			{
@@ -61,7 +64,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("average-last-14-days/{deviceId}")]
-		public async Task<IActionResult> GetAverageLast14Days(int deviceId)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> GetAverageLast14Days(int deviceId)
 		{
 			var currentDate = DateTime.UtcNow.Date;
 			var startDate = currentDate.AddDays(-13);
@@ -94,7 +98,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("daily-nightly-all/{date}/{deviceId}")]
-		public async Task<IActionResult> GetDailyNightlyAllData(DateTime date, int deviceId)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> GetDailyNightlyAllData(DateTime date, int deviceId)
 		{
 			// Lấy dữ liệu cả ngày (từ 0h đến 23h59)
 			var allDayData = await _context.UserMedicalDatas
@@ -129,7 +134,8 @@ namespace DATN.Controllers
 
 
 		[HttpGet("average-daily-night-last-14-days/{deviceId}")]
-		public async Task<IActionResult> GetDailyNightAverageLast14Days(int deviceId)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> GetDailyNightAverageLast14Days(int deviceId)
 		{
 			var currentDate = DateTime.UtcNow.Date;
 			var startDate = currentDate.AddDays(-13);
