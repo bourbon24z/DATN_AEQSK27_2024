@@ -21,8 +21,7 @@ namespace DATN.Controllers
         }
 
         [HttpPost("caseHistory")]
-        [Authorize(Roles = "admin")]
-        [Authorize(Roles = "doctor")]
+        [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> CreateCaseHistory([FromBody] CaseHistoryDto caseHistoryDto)
         {
             var user = await _context.StrokeUsers.FirstOrDefaultAsync(c => c.UserId == caseHistoryDto.UserId);
@@ -46,8 +45,7 @@ namespace DATN.Controllers
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "admin")]
-        [Authorize(Roles = "doctor")]
+        [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> GetCaseHistoryByUserId([FromRoute] int id)
         {
             var caseHistory = await _context.CaseHistories.Where(c => c.UserId == id).ToArrayAsync();
@@ -59,8 +57,7 @@ namespace DATN.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "admin")]
-        [Authorize(Roles = "doctor")]
+        [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> GetCaseHistory()
         {
             var caseHistory = await _context.CaseHistories.ToArrayAsync();
@@ -72,8 +69,7 @@ namespace DATN.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "admin")]
-        [Authorize(Roles = "doctor")]
+        [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> UpdateCaseHistory([FromRoute] int id, [FromBody] CaseHistoryDto caseHistoryDto)
         {
             var caseHistory = await _context.CaseHistories.FirstOrDefaultAsync(c => c.CaseHistoryId == id);
@@ -91,8 +87,7 @@ namespace DATN.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "admin")]
-        [Authorize(Roles = "doctor")]
+        [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> DeleteCaseHistory([FromRoute] int id)
         {
             var caseHistory = await _context.CaseHistories.FirstOrDefaultAsync(c => c.CaseHistoryId == id);
