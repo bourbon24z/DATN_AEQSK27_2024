@@ -143,33 +143,6 @@
         <div id="notifications"></div>
     </div>
     
-    <div class="panel">
-        <h2>3. Mô phỏng gửi thông báo</h2>
-        <p>Sử dụng Postman để gọi API tạo thông báo:</p>
-        <pre>
-POST http://localhost:5062/api/Warning/device-reading
-Headers:
-  Content-Type: application/json
-  Authorization: Bearer {your_token}
-
-Body:
-{
-  "userId": 1,
-  "measurements": {
-    "temperature": 38.5,
-    "systolicPressure": 145,
-    "diastolicPressure": 92,
-    "heartRate": 95,
-    "spo2": 93,
-    "bloodPH": 7.32
-  },
-  "gps": {
-    "lat": 10.823099,
-    "long": 106.629662
-  }
-}
-        </pre>
-    </div>
     
     <!-- SignalR Client Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.12/signalr.min.js"></script>
