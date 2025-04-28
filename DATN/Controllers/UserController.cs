@@ -17,6 +17,7 @@ namespace DATN.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    // 
     public class UserController : ControllerBase
     {
         private readonly StrokeDbContext _context;
@@ -29,6 +30,7 @@ namespace DATN.Controllers
         }
 
         [HttpPost("register")]
+        //       //http://localhost:5062/api/User/register
         public async Task<IActionResult> Register([FromBody] RegisterUserDto registerUserDto)
         {
             // check  existing user
@@ -93,6 +95,7 @@ namespace DATN.Controllers
         }
 
 
+      
 
         [HttpPost("verifyotp")]
         public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpDto verifyOtpDto)
