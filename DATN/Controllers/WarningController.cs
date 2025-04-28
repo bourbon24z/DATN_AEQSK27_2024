@@ -1,192 +1,231 @@
-﻿    using DATN.Data;
-    using DATN.Dto;
-    using DATN.Models;
-    using DATN.Services;
-    using Microsoft.AspNetCore.Mvc;
-    using Microsoft.EntityFrameworkCore;
-    using System;
-    using System.Collections.Generic;
-    using System.Threading.Tasks;
+﻿using DATN.Data;
+using DATN.Dto;
+using DATN.Models;
+using DATN.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-    namespace DATN.Controllers
+namespace DATN.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class WarningController : ControllerBase
     {
-        [Route("api/[controller]")]
-        [ApiController]
-        public class WarningController : ControllerBase
-        {
-            private readonly StrokeDbContext _context;
-            private readonly INotificationService _notificationService ;
-       
+        private readonly StrokeDbContext _context;
+        private readonly INotificationService _notificationService;
+        private readonly INotificationFormatterService _notificationFormatter;
 
-            public WarningController(StrokeDbContext context, INotificationService notificationService)
+        public WarningController(StrokeDbContext context, INotificationService notificationService, INotificationFormatterService notificationFormatter)
+        {
+            _context = context;
+            _notificationService = notificationService;
+            _notificationFormatter = notificationFormatter;
+        }
+
+        [HttpPost("device-reading")]
+        public async Task<IActionResult> ProcessDeviceReading([FromBody] DeviceDataDto deviceData)
+        {
+            if (deviceData == null)
+                return BadRequest("Dữ liệu không hợp lệ.");
+            if (deviceData.Measurements == null)
+                return BadRequest("Dữ liệu đo lường là bắt buộc.");
+            var strokeUser = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == deviceData.UserId);
+            if (strokeUser == null)
+                return NotFound("Không tìm thấy người dùng.");
+
+            int overallLevel = 0;  // 0: Bình thường, 1: Cảnh báo, 2: Nguy hiểm
+            List<string> detailsList = new List<string>();
+
+            // 1. Nhiệt độ (Chuẩn: 37°C)
+            if (deviceData.Measurements.Temperature.HasValue)
             {
-                _context = context;
-                _notificationService = notificationService;
+                float temp = deviceData.Measurements.Temperature.Value;
+                float diff = Math.Abs(temp - 37f);
+                int level = 0;
+                if (diff <= 0.5f)
+                    level = 0;
+                else if (diff > 0.5f && diff < 1f)
+                    level = 1;
+                else // diff >= 1f
+                    level = 2;
+                overallLevel = Math.Max(overallLevel, level);
+                if (level > 0)
+                    detailsList.Add($"Nhiệt độ: {temp}°C (bình thường: 37 ±0.5°C, {(level == 1 ? "Cảnh báo" : "Nguy hiểm")})");
             }
 
-       
-            [HttpPost("device-reading")]
-            public async Task<IActionResult> ProcessDeviceReading([FromBody] DeviceDataDto deviceData)
+            // 2. Huyết áp tâm thu (Chuẩn: 120 mmHg)
+            if (deviceData.Measurements.SystolicPressure.HasValue)
             {
-                if (deviceData == null)
-                    return BadRequest("Invalid device data.");
-                if (deviceData.Measurements == null)
-                    return BadRequest("Measurement data is required.");
+                float systolic = deviceData.Measurements.SystolicPressure.Value;
+                int level = 0;
+                if (systolic <= 140f)
+                    level = 0;
+                else if (systolic > 140f && systolic <= 160f)
+                    level = 1;
+                else // systolic > 160
+                    level = 2;
+                overallLevel = Math.Max(overallLevel, level);
+                if (level > 0)
+                    detailsList.Add($"Huyết áp tâm thu: {systolic} mmHg (bình thường: ≤140, {(level == 1 ? "Cảnh báo" : "Nguy hiểm")})");
+            }
+
+            // 3. Huyết áp tâm trương (Chuẩn: 80 mmHg)
+            if (deviceData.Measurements.DiastolicPressure.HasValue)
+            {
+                float diastolic = deviceData.Measurements.DiastolicPressure.Value;
+                int level = 0;
+                if (diastolic <= 90f)
+                    level = 0;
+                else if (diastolic > 90f && diastolic <= 100f)
+                    level = 1;
+                else // diastolic > 100
+                    level = 2;
+                overallLevel = Math.Max(overallLevel, level);
+                if (level > 0)
+                    detailsList.Add($"Huyết áp tâm trương: {diastolic} mmHg (bình thường: ≤90, {(level == 1 ? "Cảnh báo" : "Nguy hiểm")})");
+            }
+
+            // 4. Nhịp tim (Chuẩn: 75 bpm)
+            if (deviceData.Measurements.HeartRate.HasValue)
+            {
+                float hr = deviceData.Measurements.HeartRate.Value;
+                int level = 0;
+                if (hr >= 60 && hr <= 90)
+                    level = 0;
+                else if ((hr >= 50 && hr < 60) || (hr > 90 && hr <= 100))
+                    level = 1;
+                else if (hr < 50 || hr > 100)
+                    level = 2;
+                overallLevel = Math.Max(overallLevel, level);
+                if (level > 0)
+                    detailsList.Add($"Nhịp tim: {hr} bpm (bình thường: 60–90, {(level == 1 ? "Cảnh báo" : "Nguy hiểm")})");
+            }
+
+            // 5. SPO2 (Chuẩn: 95%)
+            if (deviceData.Measurements.SPO2.HasValue)
+            {
+                float spo2 = deviceData.Measurements.SPO2.Value;
+                int level = 0;
+                if (spo2 >= 95f)
+                    level = 0;
+                else if (spo2 >= 90f && spo2 < 95f)
+                    level = 1;
+                else // spo2 < 90
+                    level = 2;
+                overallLevel = Math.Max(overallLevel, level);
+                if (level > 0)
+                    detailsList.Add($"SPO2: {spo2}% (bình thường: ≥95%, {(level == 1 ? "Cảnh báo" : "Nguy hiểm")})");
+            }
+
+            // 6. Độ pH máu (Chuẩn: 7.4)
+            if (deviceData.Measurements.BloodPH.HasValue)
+            {
+                float ph = deviceData.Measurements.BloodPH.Value;
+                float diff = Math.Abs(ph - 7.4f);
+                int level = 0;
+                if (diff <= 0.05f)
+                    level = 0;
+                else if (diff > 0.05f && diff < 0.2f)
+                    level = 1;
+                else // diff >= 0.2
+                    level = 2;
+                overallLevel = Math.Max(overallLevel, level);
+                if (level > 0)
+                    detailsList.Add($"Độ pH máu: {ph} (bình thường: 7.4 ±0.05, {(level == 1 ? "Cảnh báo" : "Nguy hiểm")})");
+            }
+
+            string classification;
+            if (overallLevel == 0)
+                classification = "NORMAL";
+            else if (overallLevel == 1)
+                classification = "RISK";
+            else
+                classification = "WARNING";
+
+            bool hasGps = deviceData.GPS != null &&
+                          (Math.Abs(deviceData.GPS.Lat) > 0.0001f || Math.Abs(deviceData.GPS.Long) > 0.0001f);
+
+            if (classification == "WARNING" && !hasGps)
+                classification = "RISK";
+
+            string details = (detailsList.Count > 0)
+                ? string.Join("; ", detailsList)
+                : "Tất cả các chỉ số đều bình thường.";
+
+            string classificationVietnamese;
+            if (classification == "NORMAL")
+                classificationVietnamese = "BÌNH THƯỜNG";
+            else if (classification == "RISK")
+                classificationVietnamese = "NGUY HIỂM";
+            else
+                classificationVietnamese = "CẢNH BÁO";
 
             
-                var strokeUser = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == deviceData.UserId);
-                if (strokeUser == null)
-                    return NotFound("User not found.");
+            string formattedDescription = _notificationFormatter.FormatWarningMessage(
+                classificationVietnamese,
+                details,
+                hasGps ? deviceData.GPS : null
+            );
 
-                int overallLevel = 0;  // 0: Normal, 1: Risk, 2: Alarm
-                List<string> detailsList = new List<string>();
+           
+            if (classification == "NORMAL")
+            {
+                return Ok("Tất cả các chỉ số đều bình thường.");
+            }
 
-                // 1. Temperature (Standard: 37°C)
-                if (deviceData.Measurements.Temperature.HasValue)
-                {
-                    float temp = deviceData.Measurements.Temperature.Value;
-                    float diff = Math.Abs(temp - 37f);
-                    int level = 0;
-                    if (diff <= 0.5f)
-                        level = 0;
-                    else if (diff > 0.5f && diff < 1f)
-                        level = 1;
-                    else // diff >= 1f
-                        level = 2;
-                    overallLevel = Math.Max(overallLevel, level);
-                    if (level > 0)
-                        detailsList.Add($"Temperature: {temp}°C (normal: 37 ±0.5°C, {(level == 1 ? "Risk" : "Alarm")})");
-                }
+            if (classification == "WARNING" || classification == "RISK")
+            {
+                Console.WriteLine($"[WarningController] Đã phát hiện tình trạng {classification} cho người dùng ID {deviceData.UserId}");
 
-                // 2. Systolic Pressure (Standard: 120 mmHg)
-                if (deviceData.Measurements.SystolicPressure.HasValue)
-                {
-                    float systolic = deviceData.Measurements.SystolicPressure.Value;
-                    int level = 0;
-                    if (systolic <= 140f)
-                        level = 0;
-                    else if (systolic > 140f && systolic <= 160f)
-                        level = 1;
-                    else // systolic > 160
-                        level = 2;
-                    overallLevel = Math.Max(overallLevel, level);
-                    if (level > 0)
-                        detailsList.Add($"Systolic Pressure: {systolic} mmHg (normal: ≤140, {(level == 1 ? "Risk" : "Alarm")})");
-                }
+                
+                await _notificationService.SendNotificationAsync(strokeUser.Email, "Cảnh báo", formattedDescription);
+                Console.WriteLine($"[WarningController] Đã gửi thông báo email cho {strokeUser.Email}");
 
-                // 3. Diastolic Pressure (Standard: 80 mmHg)
-                if (deviceData.Measurements.DiastolicPressure.HasValue)
-                {
-                    float diastolic = deviceData.Measurements.DiastolicPressure.Value;
-                    int level = 0;
-                    if (diastolic <= 90f)
-                        level = 0;
-                    else if (diastolic > 90f && diastolic <= 100f)
-                        level = 1;
-                    else // diastolic > 100
-                        level = 2;
-                    overallLevel = Math.Max(overallLevel, level);
-                    if (level > 0)
-                        detailsList.Add($"Diastolic Pressure: {diastolic} mmHg (normal: ≤90, {(level == 1 ? "Risk" : "Alarm")})");
-                }
+               
+                await _notificationService.SendWebNotificationAsync(
+                    deviceData.UserId,
+                    classification == "RISK" ? "Cảnh Báo Nghiêm Trọng" : "Cảnh Báo",
+                    formattedDescription,
+                    classification.ToLower()
+                );
+                Console.WriteLine($"[WarningController] Đã gửi thông báo web cho người dùng ID {deviceData.UserId}");
 
-                // 4. Heart Rate (Standard: 75 bpm)
-                if (deviceData.Measurements.HeartRate.HasValue)
-                {
-                    float hr = deviceData.Measurements.HeartRate.Value;
-                    int level = 0;
-                    if (hr >= 60 && hr <= 90)
-                        level = 0;
-                    else if ((hr >= 50 && hr < 60) || (hr > 90 && hr <= 100))
-                        level = 1;
-                    else if (hr < 50 || hr > 100)
-                        level = 2;
-                    overallLevel = Math.Max(overallLevel, level);
-                    if (level > 0)
-                        detailsList.Add($"Heart Rate: {hr} bpm (normal: 60–90, {(level == 1 ? "Risk" : "Alarm")})");
-                }
-
-                // 5. SPO2 (Standard: 95%)
-                if (deviceData.Measurements.SPO2.HasValue)
-                {
-                    float spo2 = deviceData.Measurements.SPO2.Value;
-                    int level = 0;
-                    if (spo2 >= 95f)
-                        level = 0;
-                    else if (spo2 >= 90f && spo2 < 95f)
-                        level = 1;
-                    else // spo2 < 90
-                        level = 2;
-                    overallLevel = Math.Max(overallLevel, level);
-                    if (level > 0)
-                        detailsList.Add($"SPO2: {spo2}% (normal: ≥95%, {(level == 1 ? "Risk" : "Alarm")})");
-                }
-
-                // 6. Blood pH (Standard: 7.4)
-                if (deviceData.Measurements.BloodPH.HasValue)
-                {
-                    float ph = deviceData.Measurements.BloodPH.Value;
-                    float diff = Math.Abs(ph - 7.4f);
-                    int level = 0;
-                    if (diff <= 0.05f)
-                        level = 0;
-                    else if (diff > 0.05f && diff < 0.2f)
-                        level = 1;
-                    else // diff >= 0.2
-                        level = 2;
-                    overallLevel = Math.Max(overallLevel, level);
-                    if (level > 0)
-                        detailsList.Add($"Blood pH: {ph} (normal: 7.4 ±0.05, {(level == 1 ? "Risk" : "Alarm")})");
-                }
-
-            
-                // 0 => NORMAL; 1 => WARNING; 2 => RISK.
-                string classification;
-                if (overallLevel == 0)
-                    classification = "NORMAL";
-                else if (overallLevel == 1)
-                    classification = "WARNING";
-                else
-                    classification = "RISK";
-
-          
-                bool hasGps = deviceData.GPS != null &&
-                              (Math.Abs(deviceData.GPS.Lat) > 0.0001f || Math.Abs(deviceData.GPS.Long) > 0.0001f);
-                if (classification == "WARNING" && !hasGps)
-                    classification = "RISK";
-
-                string details = (detailsList.Count > 0)
-                    ? string.Join("; ", detailsList)
-                    : "All measurements are normal.";
-                string description = (classification == "NORMAL")
-                    ? details
-                    : $"{classification}: {details}.";
-
-            
-                if (classification == "NORMAL")
-                {
-                    return Ok(description);
-                }
-
-          
-                if (classification == "WARNING" || classification == "RISK")
-                {
-                    await _notificationService.SendNotificationAsync(strokeUser.Email, "Warning Alert", description);
-                }
-
-                // save record into DB
+                
                 Warning warningRecord = new Warning
                 {
                     UserId = deviceData.UserId,
-                    Description = description,
+                    Description = formattedDescription, 
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
                 };
-
                 _context.Warnings.Add(warningRecord);
-                await _context.SaveChangesAsync();
 
-                return Ok($"Warning processed and stored successfully. Details: {description}");
+                if (hasGps)
+                {
+                    var gpsRecord = new Gps
+                    {
+                        UserId = deviceData.UserId,
+                        Lat = deviceData.GPS.Lat,
+                        Lon = deviceData.GPS.Long,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Gps.Add(gpsRecord);
+                    Console.WriteLine($"[WarningController] Đã lưu dữ liệu GPS. Vĩ độ: {deviceData.GPS.Lat}, Kinh độ: {deviceData.GPS.Long}");
+                }
+
+                await _context.SaveChangesAsync();
             }
+
+            
+            return Ok(new
+            {
+                message = "Đã xử lý và lưu cảnh báo thành công",
+                details = formattedDescription
+            });
         }
+
     }
+}

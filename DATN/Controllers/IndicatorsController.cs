@@ -52,9 +52,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("add-molecular-indicator")]
-		[Authorize(Roles = "admin")]
-		[Authorize(Roles = "doctor")]
-		public async Task<IActionResult> AddMolecularIndicator([FromBody] MolecularIndicatorDTO molecularIndicatorDTO)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> AddMolecularIndicator([FromBody] MolecularIndicatorDTO molecularIndicatorDTO)
 		{
 			if (molecularIndicatorDTO == null)
 			{
@@ -87,11 +86,10 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("add-subclinical-Indicator")]
-		[Authorize(Roles = "admin")]
-		[Authorize(Roles = "doctor")]
+        [Authorize(Roles = "admin,doctor")]
 
 
-		public async Task<IActionResult> AddSubclinicalIndicator([FromBody] SubclinicalIndicatorDTO subclinicalIndicatorDTO)
+        public async Task<IActionResult> AddSubclinicalIndicator([FromBody] SubclinicalIndicatorDTO subclinicalIndicatorDTO)
 		{
 			if (subclinicalIndicatorDTO == null)
 			{
@@ -125,9 +123,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("get-indicator/{userId}")]
-		[Authorize(Roles = "admin")]
-		[Authorize(Roles = "doctor")]
-		public async Task<IActionResult> GetIndicator(int userId)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> GetIndicator(int userId)
 		{
 			var clinicalIndicator = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == userId&& x.IsActived==true);
 			var molecularIndicator = await _context.MolecularIndicators.FirstOrDefaultAsync(x => x.UserID == userId&& x.IsActived==true);
@@ -144,9 +141,8 @@ namespace DATN.Controllers
 			});
 		}
 		[HttpGet("get-percent-indicator-is-true")]
-		[Authorize(Roles = "admin")]
-		[Authorize(Roles = "doctor")]
-		public async Task<IActionResult> GetPercentIndicatorIsTrue(int userId)
+        [Authorize(Roles = "admin,doctor")]
+        public async Task<IActionResult> GetPercentIndicatorIsTrue(int userId)
 		{
 			var clinicalIndicator = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == userId && x.IsActived == true);
 			var molecularIndicator = await _context.MolecularIndicators.FirstOrDefaultAsync(x => x.UserID == userId && x.IsActived == true);
