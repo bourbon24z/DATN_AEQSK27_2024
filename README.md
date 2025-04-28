@@ -2,7 +2,7 @@
 
 ## Tổng Quan
 
-Hướng dẫn cách tích hợp và hiển thị thông báo từ backend của kao. Sử dùng SignalR
+Hướng dẫn cách tích hợp và hiển thị thông báo từ backend của Kao. Hệ thống sử dụng SignalR để gửi cảnh báo thời gian thực đến người dùng.
 
 ## Các Tính Năng
 
@@ -27,7 +27,7 @@ npm install @microsoft/signalr
 ```
 
 ```javascript
-// Import trong JavaScript
+
 import * as signalR from "@microsoft/signalr";
 ```
 
@@ -83,18 +83,17 @@ import * as signalR from "@microsoft/signalr";
     margin-top: 10px;
 }
 
-/* Màu sắc cho các loại thông báo */
 .notification.info {
     background-color: #d1ecf1;
     border-left: 5px solid #17a2b8;
 }
 
-.notification.warning {
+.notification.risk {
     background-color: #fff3cd;
     border-left: 5px solid #ffc107;
 }
 
-.notification.risk {
+.notification.warning {
     background-color: #f8d7da;
     border-left: 5px solid #dc3545;
 }
@@ -121,28 +120,28 @@ class NotificationService {
     }
 
     initialize() {
-        // Tạo kết nối SignalR
+        
         this.connection = new signalR.HubConnectionBuilder()
             .withUrl("/notificationHub")
-            .withAutomaticReconnect([0, 2000, 5000, 10000, 30000]) // Thử kết nối lại sau các khoảng thời gian
+            .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
             .configureLogging(signalR.LogLevel.Information)
             .build();
 
-        // Lắng nghe sự kiện nhận thông báo
+        
         this.connection.on("ReceiveNotification", (title, message, notificationType) => {
             this.displayNotification(title, message, notificationType);
         });
 
-        // Bắt đầu kết nối
+        
         this.connection.start()
             .then(() => {
                 console.log("Kết nối SignalR thành công");
-                // Đăng ký nhận thông báo cho người dùng hiện tại
+               
                 this.connection.invoke("RegisterForNotifications", this.userId);
             })
             .catch(err => {
                 console.error("Lỗi khi kết nối SignalR:", err);
-                // Thử kết nối lại sau 5 giây
+                
                 setTimeout(() => this.initialize(), 5000);
             });
 
@@ -153,11 +152,11 @@ class NotificationService {
     }
 
     displayNotification(title, message, type = 'info') {
-        // Tạo phần tử thông báo
+       
         const notificationElement = document.createElement("div");
         notificationElement.className = `notification ${type}`;
         
-        // Định dạng thời gian
+       
         const timeString = new Date().toLocaleTimeString('vi-VN', { 
             hour: '2-digit', 
             minute: '2-digit',
@@ -166,7 +165,7 @@ class NotificationService {
             year: 'numeric'
         });
         
-        // HTML cho thông báo
+      
         notificationElement.innerHTML = `
             <h3>${title}</h3>
             <div class="notification-content">${message}</div>
@@ -174,51 +173,55 @@ class NotificationService {
             <button class="notification-close">&times;</button>
         `;
         
-        // Thêm vào container
+     
         const container = document.getElementById("notifications-container");
         container.appendChild(notificationElement);
         
-        // Thêm event listener cho nút đóng
+      
         const closeButton = notificationElement.querySelector('.notification-close');
         closeButton.addEventListener('click', () => {
             notificationElement.remove();
         });
         
-        // Tự động đóng sau 1 phút nếu không phải thông báo nguy hiểm
-        if (type !== 'risk') {
+       
+        if (type !== 'warning') {
             setTimeout(() => {
                 if (notificationElement.parentNode) {
                     notificationElement.classList.add('fade-out');
                     setTimeout(() => notificationElement.remove(), 500);
                 }
             }, 60000);
-        }
-        
-        
+        }    
+    }
+    
+    
+    handleMapLink(notificationElement) {
+        const mapLinks = notificationElement.querySelectorAll('a[href*="openstreetmap.org"]');
+        mapLinks.forEach(link => {
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener noreferrer');
+            link.textContent = 'Xem vị trí trên bản đồ';
+            
+         
+            const icon = document.createElement('i');
+            icon.className = 'map-icon';
+            link.prepend(icon);
+        });
+    }
 }
 ```
 
 ### 2. Khởi Tạo Dịch Vụ Thông Báo
 
 ```javascript
-// Thêm vào file main.js hoặc script chính của trang
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Lấy user ID từ localStorage hoặc từ biến toàn cục đã được định nghĩa
+    
     const userId = window.currentUserId || localStorage.getItem('userId');
     
     if (userId) {
-        // Khởi tạo dịch vụ thông báo
+       
         window.notificationService = new NotificationService(userId);
-        
-        // Thêm nút bật/tắt âm thanh nếu cần
-        const soundToggle = document.getElementById('toggle-notification-sound');
-        if (soundToggle) {
-            soundToggle.addEventListener('click', function() {
-                const enabled = this.classList.toggle('active');
-                window.notificationService.toggleSound(enabled);
-                this.textContent = enabled ? 'Tắt âm thanh' : 'Bật âm thanh';
-            });
-        }
     } else {
         console.warn("Không tìm thấy ID người dùng, không thể khởi tạo thông báo");
     }
@@ -227,8 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 ## Hiển Thị Thông Báo Đúng Cách
 
-
-### 2. Xử Lý HTML Trong Thông Báo
+### 1. Xử Lý HTML Trong Thông Báo
 
 Thông báo từ server có thể chứa HTML để định dạng nội dung tốt hơn. Đảm bảo:
 
@@ -236,7 +238,6 @@ Thông báo từ server có thể chứa HTML để định dạng nội dung t�
 2. Áp dụng CSS phù hợp cho nội dung HTML bên trong thông báo
 
 ```css
-/* Thêm vào CSS */
 .notification-content ul {
     margin: 5px 0;
     padding-left: 20px;
@@ -250,31 +251,32 @@ Thông báo từ server có thể chứa HTML để định dạng nội dung t�
 .notification-content a:hover {
     text-decoration: underline;
 }
-```
 
-### 3. Xử Lý Liên Kết Bản Đồ
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
 
-```javascript
-// Thêm vào NotificationService
-handleMapLink(notificationElement) {
-    const mapLinks = notificationElement.querySelectorAll('a[href*="openstreetmap.org"]');
-    mapLinks.forEach(link => {
-        link.setAttribute('target', '_blank');
-        link.setAttribute('rel', 'noopener noreferrer');
-        
-        // Tùy chọn: thay đổi văn bản liên kết
-        link.textContent = 'Xem vị trí trên bản đồ';
-        
-        // Thêm biểu tượng bản đồ
-        const icon = document.createElement('i');
-        icon.className = 'map-icon';
-        link.prepend(icon);
-    });
+.notification.fade-out {
+    animation: fadeOut 0.5s forwards;
+}
+.notification-close {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+    opacity: 0.5;
+}
+
+.notification-close:hover {
+    opacity: 1;
 }
 ```
 
-## Demo Thông Báo HTML From Huy Nguyen Cute
-
+## Mẫu Thông Báo HTML
 
 ```html
 <div style='font-weight: bold; font-size: 1.2em; margin-bottom: 10px;'>❗ CẢNH BÁO ❗</div>
@@ -296,9 +298,9 @@ handleMapLink(notificationElement) {
 
 ## Loại Thông Báo
 
-- **info**: Thông báo thông thường, thông tin chung
-- **risk**: Cảnh báo sức khỏe
-- **warning**: Cảnh báo nghiêm trọng, nguy hiểm
+- **info**: Thông báo thông thường, thông tin chung (level 0)
+- **risk**: Mức cảnh báo trung bình (level 1)
+- **warning**: Mức cảnh báo cao nhất (level 2)
 
 ## Xử Lý Lỗi Thường Gặp
 
@@ -313,11 +315,27 @@ handleMapLink(notificationElement) {
 console.log("Trạng thái kết nối:", window.notificationService.connection.state);
 ```
 
+### 2. Thông báo không hiển thị xuống dòng
+
+- Đảm bảo CSS có thuộc tính `white-space: pre-wrap`
+- Kiểm tra nội dung thông báo có HTML đúng cú pháp không
+
+### 3. Thông báo không hiện đúng
+
+- Đảm bảo CSS đã được áp dụng cho container và các phần tử thông báo
+- Kiểm tra các thẻ HTML trong thông báo có lỗi cú pháp không
+
 ## Danh Sách Kiểm Tra
 
 - [ ] Thêm SignalR Client vào dự án
+- [ ] Thêm CSS cho thông báo
 - [ ] Thêm container HTML để hiển thị thông báo
 - [ ] Khởi tạo dịch vụ thông báo với userId
 - [ ] Kiểm tra hiển thị thông báo với các loại khác nhau
 - [ ] Kiểm tra xem thông báo có xuống dòng đúng không
 - [ ] Kiểm tra liên kết bản đồ có hoạt động không
+
+---
+
+*Cập nhật lần cuối: 2025-04-28*  
+*Tác giả: Kao*
