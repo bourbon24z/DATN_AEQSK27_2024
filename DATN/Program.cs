@@ -2,6 +2,7 @@
 using DATN.Data;
 using DATN.Services;
 using DATN.Hubs;
+using DATN.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
@@ -14,12 +15,13 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add DbContext
+
 builder.Services.AddDbContext<StrokeDbContext>(options =>
     options.UseMySql(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         new MySqlServerVersion(new Version(8, 0, 21)),
         mysqlOptions => mysqlOptions.EnableRetryOnFailure()));
+
 
 // Add Email Services
 builder.Services.AddSingleton<EmailService>();
@@ -27,14 +29,13 @@ builder.Services.AddSingleton<IBackgroundEmailQueue>(new BackgroundEmailQueue(10
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 
-
 builder.Services.AddSignalR();
 
 // Add Notification Service 
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationFormatterService, NotificationFormatterService>();
 
-//Add Doctor Services
+
 builder.Services.AddScoped<IDoctorService, DoctorService>();
 
 // Configure CORS for frontend and SignalR
@@ -42,12 +43,13 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true) //only dev
+        policy.SetIsOriginAllowed(_ => true) // dev only
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); 
+              .AllowCredentials();
     });
 });
+
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -72,6 +74,7 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+       
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -85,6 +88,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             NameClaimType = ClaimTypes.NameIdentifier
         };
 
+        
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
@@ -100,20 +104,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                     Console.WriteLine($"{claim.Type}: {claim.Value}");
                 }
                 return Task.CompletedTask;
-            }
-        };
-
-       
-        options.Events = new JwtBearerEvents
-        {
+            },
             OnMessageReceived = context =>
             {
                 var accessToken = context.Request.Query["access_token"];
-
-                
-                var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    path.StartsWithSegments("/notificationHub"))
+                    context.HttpContext.Request.Path.StartsWithSegments("/notificationHub"))
                 {
                     context.Token = accessToken;
                 }
@@ -122,13 +118,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// Swagger
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
-        Description = "Enter 'Bearer' [space] and your token",
+        Description = "Enter 'Bearer [space] and your token'",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
         Scheme = "Bearer",
@@ -137,20 +133,20 @@ builder.Services.AddSwaggerGen(options =>
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            Array.Empty<string>()
+          new OpenApiSecurityScheme
+          {
+              Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+          },
+          Array.Empty<string>()
         }
     });
 });
 
-// Add Controllers
-builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddControllers();
 
 var app = builder.Build();
+
 
 if (app.Environment.IsDevelopment())
 {
@@ -162,7 +158,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// CORS
+
 app.UseCors("AllowFrontend3000");
 
 app.UseRouting();
@@ -170,16 +166,13 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Log Auth Info
 if (app.Environment.IsDevelopment())
 {
     app.Use(async (context, next) =>
     {
         var authHeader = context.Request.Headers["Authorization"].ToString();
         Console.WriteLine($"Authorization Header: {authHeader}");
-
         await next.Invoke();
-
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var userId = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -194,11 +187,38 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.MapControllers();
 
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<StrokeDbContext>();
+
+   
+    context.Database.Migrate();
+
+   
+    if (!context.Roles.Any())
+    {
+        context.Roles.AddRange(new[]
+        {
+            new Role { RoleName = "user" },
+            new Role { RoleName = "admin" },
+            new Role { RoleName = "doctor" }
+        });
+        context.SaveChanges();
+        Console.WriteLine("Roles seeded successfully.");
+    }
+    else
+    {
+        var roles = context.Roles.Select(r => r.RoleName).ToArray();
+        Console.WriteLine("Roles already exist: " + string.Join(", ", roles));
+    }
+}
+
+
+app.MapControllers();
 app.UseCors("AllowAll");
 app.UseRouting();
-// Map SignalR Hub
+
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();
