@@ -21,6 +21,10 @@ namespace DATN.Hubs
                     // Thêm user vào group có tên là userId để gửi thông báo riêng
                     await Groups.AddToGroupAsync(Context.ConnectionId, userId);
                     Console.WriteLine($"User {userId} connected with connection ID: {Context.ConnectionId}");
+
+                    // Gửi thông báo xác nhận kết nối thành công
+                    await Clients.Client(Context.ConnectionId).SendAsync("ConnectionConfirmed",
+                        new { userId = userId, connectionId = Context.ConnectionId, timestamp = DateTime.UtcNow });
                 }
                 else
                 {
@@ -58,6 +62,26 @@ namespace DATN.Hubs
             }
 
             await base.OnDisconnectedAsync(exception);
+        }
+
+        /// <summary>
+        /// Phương thức cho phép client tham gia vào group cụ thể
+        /// </summary>
+        public async Task JoinGroup(string groupName)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
+            Console.WriteLine($"Client {Context.ConnectionId} joined group: {groupName}");
+            await Clients.Caller.SendAsync("GroupJoined", groupName);
+        }
+
+        /// <summary>
+        /// Phương thức cho phép client rời khỏi group
+        /// </summary>
+        public async Task LeaveGroup(string groupName)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
+            Console.WriteLine($"Client {Context.ConnectionId} left group: {groupName}");
+            await Clients.Caller.SendAsync("GroupLeft", groupName);
         }
     }
 }
