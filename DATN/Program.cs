@@ -34,9 +34,9 @@ builder.Services.AddSignalR();
 // Add Notification Service 
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<INotificationFormatterService, NotificationFormatterService>();
-
-
+builder.Services.AddScoped<IMobileNotificationSenderService, MobileNotificationSenderService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
+builder.Services.AddScoped<IMobileNotificationService, SignalRMobileNotificationService>();
 
 // Configure CORS for frontend and SignalR
 builder.Services.AddCors(options =>
@@ -160,9 +160,7 @@ if (app.Environment.IsDevelopment())
 
 
 app.UseCors("AllowFrontend3000");
-
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -188,37 +186,37 @@ if (app.Environment.IsDevelopment())
 }
 
 
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<StrokeDbContext>();
+//using (var scope = app.Services.CreateScope())
+//{
+//    var context = scope.ServiceProvider.GetRequiredService<StrokeDbContext>();
 
    
-    context.Database.Migrate();
+//    context.Database.Migrate();
 
    
-    if (!context.Roles.Any())
-    {
-        context.Roles.AddRange(new[]
-        {
-            new Role { RoleName = "user" },
-            new Role { RoleName = "admin" },
-            new Role { RoleName = "doctor" }
-        });
-        context.SaveChanges();
-        Console.WriteLine("Roles seeded successfully.");
-    }
-    else
-    {
-        var roles = context.Roles.Select(r => r.RoleName).ToArray();
-        Console.WriteLine("Roles already exist: " + string.Join(", ", roles));
-    }
-}
+//    if (!context.Roles.Any())
+//    {
+//        context.Roles.AddRange(new[]
+//        {
+//            new Role { RoleName = "user" },
+//            new Role { RoleName = "admin" },
+//            new Role { RoleName = "doctor" }
+//        });
+//        context.SaveChanges();
+//        Console.WriteLine("Roles seeded successfully.");
+//    }
+//    else
+//    {
+//        var roles = context.Roles.Select(r => r.RoleName).ToArray();
+//        Console.WriteLine("Roles already exist: " + string.Join(", ", roles));
+//    }
+//}
 
 
 app.MapControllers();
 app.UseCors("AllowAll");
 app.UseRouting();
-
 app.MapHub<NotificationHub>("/notificationHub");
+app.UseStaticFiles();
 
 app.Run();
