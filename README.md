@@ -1,13 +1,9 @@
-<div align="center">
-  ![Notification System Banner](https://via.placeholder.com/800x200?text=AiStroke+Notification+System)
-</div>
-
 # 📱 Hướng Dẫn Cho Từng Nền Tảng
 
 | Platform       | Instructions |
 | -------------- | ------------ |
-| ![Web](https://via.placeholder.com/100x100?text=Web) Web Frontend | [Xem hướng dẫn Web](docs/web-notifications.md) |
-| ![Mobile](https://via.placeholder.com/100x100?text=Mobile) Mobile Frontend | [Xem hướng dẫn Mobile](docs/mobile-notifications.md) |
+| ![Web] Web Frontend | [Xem hướng dẫn Web](docs/web-notifications.md) |
+| ![Mobile]Mobile Frontend | [Xem hướng dẫn Mobile](docs/mobile-notifications.md) |
 
 🌟 **Tính Năng Chung**
 - Thông báo thời gian thực qua SignalR
