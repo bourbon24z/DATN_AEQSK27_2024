@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test SignalR Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .panel {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .notification {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .danger, .risk {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .info {
+            background-color: #d1ecf1;
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .log {
+            font-family: monospace;
+            font-size: 14px;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .notification-title {
+            margin-top: 0;
+            font-size: 16px;
+        }
+        
+        .notification-time {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        #connection-status {
+            padding: 8px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        #connection-status.connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        #connection-status.disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .api-result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        
+        .api-result.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .api-result.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>SignalR Notification Test</h1>
+    
+    <div class="panel">
+        <h2>1. Kết nối đến SignalR Hub</h2>
+        
+        <div class="form-group">
+            <label for="user-id">User ID:</label>
+            <input type="text" id="user-id" placeholder="Nhập ID của người dùng (ví dụ: 1)" value="1">
+        </div>
+        
+        <div class="form-group">
+            <label for="hub-url">SignalR Hub URL:</label>
+            <input type="text" id="hub-url" value="http://localhost:5062/notificationHub">
+        </div>
+        
+        <div class="form-group">
+            <label for="jwt-token">JWT Token (không bắt buộc):</label>
+            <input type="text" id="jwt-token" placeholder="Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        </div>
+        
+        <button id="connect-button">Kết nối</button>
+        <button id="disconnect-button" style="background-color: #dc3545; display: none;">Ngắt kết nối</button>
+        
+        <div id="connection-status" class="disconnected" style="margin-top: 10px;">
+            Chưa kết nối
+        </div>
+        
+        <div id="connection-log" class="log"></div>
+    </div>
+    
+    <div class="panel">
+        <h2>2. Gửi thông báo test</h2>
+        
+        <div class="form-group">
+            <label for="notification-title">Tiêu đề:</label>
+            <input type="text" id="notification-title" value="Test Notification">
+        </div>
+        
+        <div class="form-group">
+            <label for="notification-message">Nội dung:</label>
+            <textarea id="notification-message" rows="3">Đây là thông báo test gửi từ trang web test.</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="notification-type">Loại thông báo:</label>
+            <select id="notification-type">
+                <option value="info">Thông tin (info)</option>
+                <option value="warning">Cảnh báo (warning)</option>
+                <option value="risk">Nguy hiểm (risk)</option>
+            </select>
+        </div>
+        
+        <button id="send-notification-button">Gửi thông báo test</button>
+        
+        <div id="api-result" class="api-result"></div>
+    </div>
+    
+    <div class="panel">
+        <h2>3. Thông báo đã nhận</h2>
+        <div id="notifications"></div>
+    </div>
+    
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.12/signalr.min.js"></script>
+    
+    <script>
+        let connection;
+        const connectionLog = document.getElementById('connection-log');
+        const notificationsContainer = document.getElementById('notifications');
+        const connectButton = document.getElementById('connect-button');
+        const disconnectButton = document.getElementById('disconnect-button');
+        const connectionStatus = document.getElementById('connection-status');
+        const sendNotificationButton = document.getElementById('send-notification-button');
+        const apiResult = document.getElementById('api-result');
+        
+        // Log message to connection log
+        function logMessage(message) {
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            connectionLog.appendChild(logEntry);
+            connectionLog.scrollTop = connectionLog.scrollHeight;
+        }
+        
+        // Display notification
+        function displayNotification(notification) {
+            const notificationDiv = document.createElement('div');
+            notificationDiv.className = `notification ${notification.type || 'info'}`;
+            
+            const timestamp = notification.timestamp 
+                ? new Date(notification.timestamp).toLocaleTimeString()
+                : new Date().toLocaleTimeString();
+            
+            notificationDiv.innerHTML = `
+                <h3 class="notification-title">${notification.title}</h3>
+                <p>${notification.message || notification.body || ''}</p>
+                <div class="notification-time">${timestamp}</div>
+            `;
+            
+            notificationsContainer.prepend(notificationDiv);
+        }
+        
+        // Connect to SignalR hub
+        async function connectToHub() {
+            const userId = document.getElementById('user-id').value;
+            const hubUrl = document.getElementById('hub-url').value;
+            const jwtToken = document.getElementById('jwt-token').value;
+            
+            if (!userId) {
+                alert('Vui lòng nhập User ID!');
+                return;
+            }
+            
+            if (!hubUrl) {
+                alert('Vui lòng nhập URL của SignalR Hub!');
+                return;
+            }
+            
+            try {
+               
+                if (connection) {
+                    await connection.stop();
+                    logMessage('Đã ngắt kết nối cũ.');
+                }
+                
+                // Build connection with options
+                let hubUrlWithParams = `${hubUrl}?userId=${userId}`;
+                
+                const connectionBuilder = new signalR.HubConnectionBuilder()
+                    .withUrl(hubUrlWithParams, {
+                        accessTokenFactory: () => jwtToken?.replace('Bearer ', '') || ''
+                    })
+                    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+                    .configureLogging(signalR.LogLevel.Information);
+                
+                connection = connectionBuilder.build();
+                
+               
+                connection.onreconnecting(error => {
+                    connectionStatus.textContent = 'Đang kết nối lại...';
+                    connectionStatus.className = 'disconnected';
+                    logMessage(`Đang kết nối lại: ${error ? error.message : 'Unknown reason'}`);
+                });
+                
+                connection.onreconnected(connectionId => {
+                    connectionStatus.textContent = `Đã kết nối (ID: ${connectionId})`;
+                    connectionStatus.className = 'connected';
+                    logMessage(`Kết nối lại thành công với ID: ${connectionId}`);
+                });
+                
+                connection.onclose(error => {
+                    connectionStatus.textContent = 'Đã ngắt kết nối';
+                    connectionStatus.className = 'disconnected';
+                    connectButton.style.display = 'inline-block';
+                    disconnectButton.style.display = 'none';
+                    logMessage(`Đã ngắt kết nối: ${error ? error.message : 'User initiated'}`);
+                });
+                
+                connection.on('ReceiveNotification', notification => {
+                    logMessage(`Nhận thông báo: ${notification.title}`);
+                    displayNotification(notification);
+                });
+                
+              
+                logMessage('Đang kết nối...');
+                await connection.start();
+                logMessage(`Kết nối thành công với Hub.`);
+                
+             
+                connectionStatus.textContent = 'Đã kết nối';
+                connectionStatus.className = 'connected';
+                connectButton.style.display = 'none';
+                disconnectButton.style.display = 'inline-block';
+            } catch (err) {
+                logMessage(`Lỗi kết nối: ${err.message}`);
+                connectionStatus.textContent = `Lỗi kết nối`;
+                connectionStatus.className = 'disconnected';
+                alert(`Không thể kết nối đến SignalR Hub: ${err.message}`);
+            }
+        }
+        
+       
+        async function disconnectFromHub() {
+            if (connection) {
+                try {
+                    await connection.stop();
+                    logMessage('Đã ngắt kết nối thành công.');
+                    connectButton.style.display = 'inline-block';
+                    disconnectButton.style.display = 'none';
+                } catch (err) {
+                    logMessage(`Lỗi khi ngắt kết nối: ${err.message}`);
+                }
+            }
+        }
+        
+        // Send test notification via API
+        async function sendTestNotification() {
+            const userId = document.getElementById('user-id').value;
+            const title = document.getElementById('notification-title').value;
+            const message = document.getElementById('notification-message').value;
+            const type = document.getElementById('notification-type').value;
+            
+            if (!userId) {
+                alert('Vui lòng nhập User ID!');
+                return;
+            }
+            
+            
+            const hubUrl = document.getElementById('hub-url').value;
+            const apiBaseUrl = hubUrl.replace('/notificationHub', '');
+            const endpoint = `${apiBaseUrl}/api/MobileNotifications/test`;
+            
+            
+            apiResult.textContent = 'Đang gửi thông báo...';
+            apiResult.className = 'api-result';
+            apiResult.style.display = 'block';
+            
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        
+                        ...(document.getElementById('jwt-token').value && {
+                            'Authorization': document.getElementById('jwt-token').value
+                        })
+                    },
+                    body: JSON.stringify({
+                        userId: parseInt(userId),
+                        title: title,
+                        message: message,
+                        type: type,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    apiResult.textContent = 'Thông báo đã được gửi thành công!';
+                    apiResult.className = 'api-result success';
+                    logMessage(`Đã gửi thông báo thành công tới userId: ${userId}`);
+                } else {
+                    const errorText = await response.text();
+                    apiResult.textContent = `Lỗi: ${response.status} - ${errorText}`;
+                    apiResult.className = 'api-result error';
+                    logMessage(`Lỗi gửi thông báo: ${response.status} ${errorText}`);
+                }
+            } catch (error) {
+                apiResult.textContent = `Lỗi: ${error.message}`;
+                apiResult.className = 'api-result error';
+                logMessage(`Lỗi gửi thông báo: ${error.message}`);
+            }
+        }
+        
+       
+        connectButton.addEventListener('click', connectToHub);
+        disconnectButton.addEventListener('click', disconnectFromHub);
+        sendNotificationButton.addEventListener('click', sendTestNotification);
+        
+        // Log initial message
+        logMessage('Sẵn sàng kết nối. Nhấn nút "Kết nối" để bắt đầu.');
+    </script>
+</body>
+</html>

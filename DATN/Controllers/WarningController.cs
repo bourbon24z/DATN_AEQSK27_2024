@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DATN.Controllers
@@ -17,12 +18,14 @@ namespace DATN.Controllers
         private readonly StrokeDbContext _context;
         private readonly INotificationService _notificationService;
         private readonly INotificationFormatterService _notificationFormatter;
+        private readonly IMobileNotificationService _mobileNotificationService;
 
-        public WarningController(StrokeDbContext context, INotificationService notificationService, INotificationFormatterService notificationFormatter)
+        public WarningController(StrokeDbContext context, INotificationService notificationService, INotificationFormatterService notificationFormatter, IMobileNotificationService mobileNotificationService)
         {
             _context = context;
             _notificationService = notificationService;
             _notificationFormatter = notificationFormatter;
+            _mobileNotificationService = mobileNotificationService;
         }
 
         [HttpPost("device-reading")]
@@ -159,18 +162,16 @@ namespace DATN.Controllers
             if (classification == "NORMAL")
                 classificationVietnamese = "BÌNH THƯỜNG";
             else if (classification == "RISK")
-                classificationVietnamese = "NGUY HIỂM";
-            else
                 classificationVietnamese = "CẢNH BÁO";
+            else
+                classificationVietnamese = "NGUY HIỂM";
 
-            
             string formattedDescription = _notificationFormatter.FormatWarningMessage(
                 classificationVietnamese,
                 details,
                 hasGps ? deviceData.GPS : null
             );
 
-           
             if (classification == "NORMAL")
             {
                 return Ok("Tất cả các chỉ số đều bình thường.");
@@ -180,24 +181,62 @@ namespace DATN.Controllers
             {
                 Console.WriteLine($"[WarningController] Đã phát hiện tình trạng {classification} cho người dùng ID {deviceData.UserId}");
 
-                
+                // sned email
                 await _notificationService.SendNotificationAsync(strokeUser.Email, "Cảnh báo", formattedDescription);
                 Console.WriteLine($"[WarningController] Đã gửi thông báo email cho {strokeUser.Email}");
 
-               
+                // send web notification
                 await _notificationService.SendWebNotificationAsync(
                     deviceData.UserId,
-                    classification == "RISK" ? "Cảnh Báo Nghiêm Trọng" : "Cảnh Báo",
+                    classification == "WARNING" ? "Cảnh Báo Nghiêm Trọng" : "Cảnh Báo",
                     formattedDescription,
                     classification.ToLower()
                 );
                 Console.WriteLine($"[WarningController] Đã gửi thông báo web cho người dùng ID {deviceData.UserId}");
 
-                
+                // send mobile notification
+                if (_mobileNotificationService != null)
+                {
+                    try
+                    {
+                       
+                        string briefNotification = CreateBriefMobileNotification(classificationVietnamese, detailsList);
+
+                        
+                        var additionalData = new Dictionary<string, string>
+                        {
+                            { "fullDescription", formattedDescription },
+                            { "timestamp", DateTime.UtcNow.ToString("o") }
+                        };
+
+                       
+                        bool mobileSent = await _mobileNotificationService.SendNotificationToUserAsync(
+                            deviceData.UserId,
+                            GetMobileNotificationTitle(classification),
+                            briefNotification,
+                            classification.ToLower(),
+                            additionalData);
+
+                        if (mobileSent)
+                        {
+                            Console.WriteLine($"[WarningController] Đã gửi thông báo mobile cho người dùng ID {deviceData.UserId}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[WarningController] Không thể gửi thông báo mobile cho người dùng ID {deviceData.UserId}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[WarningController] Lỗi khi gửi thông báo mobile: {ex.Message}");
+                    }
+                }
+
+               
                 Warning warningRecord = new Warning
                 {
                     UserId = deviceData.UserId,
-                    Description = formattedDescription, 
+                    Description = formattedDescription,
                     CreatedAt = DateTime.UtcNow,
                     IsActive = true
                 };
@@ -219,7 +258,6 @@ namespace DATN.Controllers
                 await _context.SaveChangesAsync();
             }
 
-            
             return Ok(new
             {
                 message = "Đã xử lý và lưu cảnh báo thành công",
@@ -227,5 +265,52 @@ namespace DATN.Controllers
             });
         }
 
+        
+        private string GetMobileNotificationTitle(string classification)
+        {
+            return classification switch
+            {
+                "WARNING" => "🚨 Cảnh Báo Nghiêm Trọng",
+                "RISK" => "⚠️ Cảnh Báo",
+                _ => "ℹ️ Thông Báo"
+            };
+        }
+
+       
+        private string CreateBriefMobileNotification(string classificationVietnamese, List<string> details)
+        {
+            
+            if (details.Count == 0)
+            {
+                return $"{classificationVietnamese}: Kiểm tra sức khỏe của bạn";
+            }
+
+            string content;
+
+            
+            if (details.Count <= 2)
+            {
+                content = string.Join("; ", details);
+            }
+            
+            else
+            {
+               
+                var shortenedDetails = details.Take(2)
+                    .Select(d => {
+                        
+                        int bracketPos = d.IndexOf(" (");
+                        if (bracketPos > 0)
+                            return d.Substring(0, bracketPos);
+                        return d;
+                    })
+                    .ToList();
+
+                content = string.Join("; ", shortenedDetails);
+                content += $" và {details.Count - 2} chỉ số khác";
+            }
+
+            return $"{classificationVietnamese}: {content}";
+        }
     }
 }

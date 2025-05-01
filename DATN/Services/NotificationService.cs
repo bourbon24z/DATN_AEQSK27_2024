@@ -32,7 +32,6 @@ namespace DATN.Services
             _emailTemplateService = emailTemplateService;
         }
 
-       
         public Task SendNotificationAsync(string toEmail, string subject, string message)
         {
             string emailBody = _emailTemplateService.BuildEmailContent(subject, message);
@@ -41,33 +40,47 @@ namespace DATN.Services
             return Task.CompletedTask;
         }
 
-
         public async Task SendWebNotificationAsync(int userId, string title, string message, string type = "warning")
         {
             try
             {
+              
                 var notification = new
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    Title = title,
-                    Message = message,
-                    Type = type,
-                    Timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                   
+                    id = Guid.NewGuid().ToString(),
+                    title = title,
+                    message = message,
+                    type = type.ToLower(),
+                    timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 };
 
-                Console.WriteLine($"[NotificationService] Sending web notification to userId {userId}");
-                Console.WriteLine($"[NotificationService] Notification details: {System.Text.Json.JsonSerializer.Serialize(notification)}");
+                Console.WriteLine($"[NotificationService] Sending notification to userId {userId}");
 
                
                 await _hubContext.Clients.Group(userId.ToString())
                     .SendAsync("ReceiveNotification", notification);
 
                 Console.WriteLine($"[NotificationService] Notification sent successfully to group {userId}");
+
+                
+                Warning warningRecord = new Warning
+                {
+                    UserId = userId,
+                    Description = $"{title}\n{message}",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                };
+                _dbContext.Warnings.Add(warningRecord);
+                await _dbContext.SaveChangesAsync();
+
+                Console.WriteLine($"[NotificationService] Notification saved to database with id {warningRecord.WarningId}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[NotificationService] ERROR sending notification to userId {userId}: {ex.Message}");
                 Console.WriteLine($"[NotificationService] Stack trace: {ex.StackTrace}");
+                throw;
             }
         }
 
@@ -82,13 +95,13 @@ namespace DATN.Services
 
         public Task SendMobileNotificationAsync(string title, string message, IList<string> deviceTokens)
         {
-           
+            
             return Task.CompletedTask;
         }
 
         public Task SendWebNotificationAsync(string title, string message, IList<WebPushSubscription> subscriptions)
         {
-            
+           
             return Task.CompletedTask;
         }
     }
