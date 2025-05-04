@@ -12,6 +12,9 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authorization;
+using DATN.Middleware;
+using DATN.Authorization; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +40,9 @@ builder.Services.AddScoped<INotificationFormatterService, NotificationFormatterS
 builder.Services.AddScoped<IMobileNotificationSenderService, MobileNotificationSenderService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
 builder.Services.AddScoped<IMobileNotificationService, SignalRMobileNotificationService>();
+
+
+builder.Services.AddScoped<IUserService, UserService>();
 
 // Configure CORS for frontend and SignalR
 builder.Services.AddCors(options =>
@@ -74,7 +80,7 @@ JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
-       
+
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -88,7 +94,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             NameClaimType = ClaimTypes.NameIdentifier
         };
 
-        
+
         options.Events = new JwtBearerEvents
         {
             OnAuthenticationFailed = context =>
@@ -119,6 +125,48 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 
+builder.Services.AddAuthorization(options =>
+{
+    
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireRole("admin"));
+
+  
+    options.AddPolicy("DoctorOnly", policy =>
+        policy.RequireRole("doctor"));
+
+
+    options.AddPolicy("AdminOrDoctor", policy =>
+        policy.RequireRole("admin", "doctor"));
+
+  
+    options.AddPolicy("UserAccessPolicy", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var userId = context.Resource as string;
+            var currentUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var isAdmin = context.User.IsInRole("admin");
+            var isDoctor = context.User.IsInRole("doctor");
+
+            if (isAdmin) return true;
+
+            
+            if (userId == currentUserId) return true;
+
+            
+            if (isDoctor)
+            {
+                
+                return true;
+            }
+
+            return false;
+        }));
+});
+
+
+builder.Services.AddScoped<IAuthorizationHandler, UserResourceAuthorizationHandler>();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -145,6 +193,9 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 
+
+builder.Services.AddHttpContextAccessor();
+
 var app = builder.Build();
 
 
@@ -158,6 +209,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseAccessLog();
 
 app.UseCors("AllowFrontend3000");
 app.UseRouting();
@@ -184,16 +236,14 @@ if (app.Environment.IsDevelopment())
         }
     });
 }
-
-
 //using (var scope = app.Services.CreateScope())
 //{
 //    var context = scope.ServiceProvider.GetRequiredService<StrokeDbContext>();
 
-   
+
 //    context.Database.Migrate();
 
-   
+
 //    if (!context.Roles.Any())
 //    {
 //        context.Roles.AddRange(new[]
@@ -211,7 +261,6 @@ if (app.Environment.IsDevelopment())
 //        Console.WriteLine("Roles already exist: " + string.Join(", ", roles));
 //    }
 //}
-
 
 app.MapControllers();
 app.UseCors("AllowAll");
