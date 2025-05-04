@@ -119,16 +119,22 @@ namespace DATN.Services
             if (isAdmin)
                 return true;
 
-            
+
             var isDoctor = await HasRoleAsync(requestingUserId, "doctor");
             if (isDoctor)
             {
-                
                 var isTargetPatient = await HasRoleAsync(targetUserId, "user");
-                return isTargetPatient;
+                if (!isTargetPatient)
+                    return false;
+
+                return await _context.Relationships
+                    .AnyAsync(r =>
+                        r.InviterId == requestingUserId &&
+                        r.UserId == targetUserId &&
+                        r.RelationshipType == "doctor-patient");
             }
 
-          
+
             return false;
         }
 

@@ -567,5 +567,152 @@ namespace DATN.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
+        [HttpGet("doctor-patients/{doctorId}")]
+        [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/doctor-patients/123
+        public async Task<IActionResult> GetDoctorPatients(int doctorId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                // Kiểm tra doctor có tồn tại không
+                var doctor = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == doctorId);
+                if (doctor == null)
+                    return NotFound($"Doctor with ID {doctorId} not found");
+
+                // Kiểm tra có phải doctor không
+                var isDoctorRole = await _context.UserRoles
+                    .AnyAsync(ur =>
+                        ur.UserId == doctorId &&
+                        ur.Role.RoleName == "doctor" &&
+                        ur.IsActive);
+
+                if (!isDoctorRole)
+                    return BadRequest($"User with ID {doctorId} is not a doctor");
+
+                // Lấy danh sách bệnh nhân của doctor này
+                var patientIds = await _context.Relationships
+                    .Where(r => r.InviterId == doctorId && r.RelationshipType == "doctor-patient")
+                    .Select(r => r.UserId)
+                    .ToListAsync();
+
+                if (!patientIds.Any())
+                {
+                    return Ok(new
+                    {
+                        DoctorId = doctorId,
+                        DoctorName = doctor.PatientName,
+                        TotalCount = 0,
+                        TotalPages = 0,
+                        CurrentPage = page,
+                        PageSize = pageSize,
+                        Patients = new List<object>()
+                    });
+                }
+
+                // Lấy chi tiết thông tin bệnh nhân
+                var patientsQuery = _context.StrokeUsers
+                    .AsNoTracking()
+                    .Where(u => patientIds.Contains(u.UserId));
+
+                var totalCount = await patientsQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                var patients = await patientsQuery
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var patientDtos = patients.Select(patient => new
+                {
+                    UserId = patient.UserId,
+                    Username = patient.Username,
+                    PatientName = patient.PatientName,
+                    DateOfBirth = patient.DateOfBirth,
+                    Age = DateTime.Today.Year - patient.DateOfBirth.Year,
+                    Gender = patient.Gender,
+                    Phone = patient.Phone,
+                    Email = patient.Email
+                }).ToList();
+
+                return Ok(new
+                {
+                    DoctorId = doctorId,
+                    DoctorName = doctor.PatientName,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Patients = patientDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("relationships")]
+        [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/relationships?type=doctor-patient
+        public async Task<IActionResult> GetAllRelationships([FromQuery] string type = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                IQueryable<Relationship> query = _context.Relationships
+                    .Include(r => r.User)
+                    .Include(r => r.Inviter)
+                    .AsNoTracking();
+
+                // Lọc theo loại mối quan hệ nếu có
+                if (!string.IsNullOrEmpty(type))
+                {
+                    query = query.Where(r => r.RelationshipType == type);
+                }
+
+                // Tính tổng số bản ghi và phân trang
+                var totalCount = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                var relationships = await query
+                    .OrderByDescending(r => r.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var relationshipDtos = relationships.Select(r => new
+                {
+                    RelationshipId = r.RelationshipId,
+                    RelationshipType = r.RelationshipType,
+                    CreatedAt = r.CreatedAt,
+                    User = new
+                    {
+                        UserId = r.User.UserId,
+                        Username = r.User.Username,
+                        Name = r.User.PatientName,
+                        Email = r.User.Email
+                    },
+                    Inviter = new
+                    {
+                        UserId = r.Inviter.UserId,
+                        Username = r.Inviter.Username,
+                        Name = r.Inviter.PatientName,
+                        Email = r.Inviter.Email
+                    }
+                }).ToList();
+
+                return Ok(new
+                {
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Relationships = relationshipDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }

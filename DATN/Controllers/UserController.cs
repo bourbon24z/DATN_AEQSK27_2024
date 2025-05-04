@@ -576,7 +576,7 @@ namespace DATN.Controllers
         {
             try
             {
-               
+                
                 var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!int.TryParse(userIdStr, out int userId))
                 {
