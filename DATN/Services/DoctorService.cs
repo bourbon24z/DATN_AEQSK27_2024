@@ -41,7 +41,7 @@ namespace DATN.Services
         {
             return await _context.CaseHistories
                 .Include(c => c.StrokeUser)
-                // Loại bỏ Include không hợp lệ
+              
                 .ToListAsync();
         }
 
@@ -49,7 +49,7 @@ namespace DATN.Services
         {
             return await _context.CaseHistories
                 .Include(c => c.StrokeUser)
-                // Loại bỏ Include không hợp lệ
+              
                 .FirstOrDefaultAsync(c => c.CaseHistoryId == id);
         }
 
