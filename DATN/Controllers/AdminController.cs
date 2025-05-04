@@ -574,12 +574,12 @@ namespace DATN.Controllers
         {
             try
             {
-                // Kiểm tra doctor có tồn tại không
+                
                 var doctor = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == doctorId);
                 if (doctor == null)
                     return NotFound($"Doctor with ID {doctorId} not found");
 
-                // Kiểm tra có phải doctor không
+                
                 var isDoctorRole = await _context.UserRoles
                     .AnyAsync(ur =>
                         ur.UserId == doctorId &&
@@ -589,7 +589,7 @@ namespace DATN.Controllers
                 if (!isDoctorRole)
                     return BadRequest($"User with ID {doctorId} is not a doctor");
 
-                // Lấy danh sách bệnh nhân của doctor này
+                
                 var patientIds = await _context.Relationships
                     .Where(r => r.InviterId == doctorId && r.RelationshipType == "doctor-patient")
                     .Select(r => r.UserId)
@@ -609,7 +609,7 @@ namespace DATN.Controllers
                     });
                 }
 
-                // Lấy chi tiết thông tin bệnh nhân
+                
                 var patientsQuery = _context.StrokeUsers
                     .AsNoTracking()
                     .Where(u => patientIds.Contains(u.UserId));
@@ -663,13 +663,13 @@ namespace DATN.Controllers
                     .Include(r => r.Inviter)
                     .AsNoTracking();
 
-                // Lọc theo loại mối quan hệ nếu có
+                
                 if (!string.IsNullOrEmpty(type))
                 {
                     query = query.Where(r => r.RelationshipType == type);
                 }
 
-                // Tính tổng số bản ghi và phân trang
+                
                 var totalCount = await query.CountAsync();
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
