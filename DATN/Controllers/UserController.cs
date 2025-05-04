@@ -576,14 +576,14 @@ namespace DATN.Controllers
         {
             try
             {
-                // Lấy ID của user từ token
+                
                 var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!int.TryParse(userIdStr, out int userId))
                 {
                     return BadRequest("Invalid user identifier");
                 }
 
-                // Lấy danh sách mối quan hệ doctor-patient
+                
                 var relationships = await _context.Relationships
                     .Include(r => r.Inviter)
                     .Where(r => r.UserId == userId && r.RelationshipType == "doctor-patient")
@@ -598,7 +598,7 @@ namespace DATN.Controllers
                     });
                 }
 
-                // Lấy danh sách doctor
+                
                 var doctors = relationships.Select(r => new
                 {
                     DoctorId = r.Inviter.UserId,
