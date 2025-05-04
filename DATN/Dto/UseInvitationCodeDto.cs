@@ -1,8 +1,7 @@
 ﻿namespace DATN.Dto
 {
-    public class UseInvitationDto
+    public class UseInvitationCodeDto
     {
         public string Code { get; set; }
-        public int UserId { get; set; }
     }
 }

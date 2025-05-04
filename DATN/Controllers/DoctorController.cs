@@ -1,10 +1,12 @@
 ﻿using DATN.Data;
 using DATN.Dto;
+using DATN.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace DATN.Controllers
@@ -515,6 +517,273 @@ namespace DATN.Controllers
             {
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
+        }
+        [HttpGet("my-patients")]
+        //http://localhost:5062/api/doctor/my-patients
+        public async Task<IActionResult> GetMyPatients([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+              
+                var doctorIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(doctorIdStr, out int doctorId))
+                {
+                    return BadRequest("Invalid doctor identifier");
+                }
+
+           
+                var patientIds = await _context.Relationships
+                    .Where(r => r.InviterId == doctorId && r.RelationshipType == "doctor-patient")
+                    .Select(r => r.UserId)
+                    .ToListAsync();
+
+                if (!patientIds.Any())
+                {
+                    return Ok(new
+                    {
+                        TotalCount = 0,
+                        TotalPages = 0,
+                        CurrentPage = page,
+                        PageSize = pageSize,
+                        Patients = new List<object>()
+                    });
+                }
+
+               
+                var patientsQuery = _context.StrokeUsers
+                    .AsNoTracking()
+                    .Where(u => patientIds.Contains(u.UserId));
+
+             
+                var totalCount = await patientsQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                var patients = await patientsQuery
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var patientDtos = patients.Select(patient => new
+                {
+                    UserId = patient.UserId,
+                    Username = patient.Username,
+                    PatientName = patient.PatientName,
+                    DateOfBirth = patient.DateOfBirth,
+                    Age = DateTime.Today.Year - patient.DateOfBirth.Year,
+                    Gender = patient.Gender,
+                    Phone = patient.Phone,
+                    Email = patient.Email
+                }).ToList();
+
+                return Ok(new
+                {
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Patients = patientDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("generate-invitation-code")]
+        //http://localhost:5062/api/doctor/generate-invitation-code
+        public async Task<IActionResult> GenerateInvitationCode()
+        {
+            try
+            {
+               
+                var doctorIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(doctorIdStr, out int doctorId))
+                {
+                    return BadRequest("Invalid doctor identifier");
+                }
+
+                
+                string code = GenerateRandomCode(6);
+
+              
+                var existingCode = await _context.InvitationCodes
+                    .FirstOrDefaultAsync(ic => ic.InviterUserId == doctorId && ic.Status == "active");
+
+                if (existingCode != null)
+                {
+                   
+                    existingCode.Code = code;
+                    existingCode.CreatedAt = DateTime.UtcNow;
+                    existingCode.ExpiresAt = DateTime.UtcNow.AddDays(7);
+                    _context.InvitationCodes.Update(existingCode);
+                }
+                else
+                {
+                    
+                    var invitationCode = new InvitationCode
+                    {
+                        Code = code,
+                        InviterUserId = doctorId,
+                        Status = "active",
+                        CreatedAt = DateTime.UtcNow,
+                        ExpiresAt = DateTime.UtcNow.AddDays(7) 
+                    };
+
+                    _context.InvitationCodes.Add(invitationCode);
+                }
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    Message = "Invitation code generated successfully",
+                    Code = code,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("my-patients/search")]
+        //http://localhost:5062/api/doctor/my-patients/search?query=nguyễn
+        public async Task<IActionResult> SearchMyPatients([FromQuery] string query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    return BadRequest("Search query cannot be empty");
+                }
+
+                var doctorIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(doctorIdStr, out int doctorId))
+                {
+                    return BadRequest("Invalid doctor identifier");
+                }
+
+                
+                var patientIds = await _context.Relationships
+                    .Where(r => r.InviterId == doctorId && r.RelationshipType == "doctor-patient")
+                    .Select(r => r.UserId)
+                    .ToListAsync();
+
+                if (!patientIds.Any())
+                {
+                    return Ok(new
+                    {
+                        Query = query,
+                        TotalCount = 0,
+                        TotalPages = 0,
+                        CurrentPage = page,
+                        PageSize = pageSize,
+                        Patients = new List<object>()
+                    });
+                }
+
+                
+                var searchQuery = query.ToLower();
+                var patientsQuery = _context.StrokeUsers
+                    .AsNoTracking()
+                    .Where(u => patientIds.Contains(u.UserId) &&
+                           (u.PatientName.ToLower().Contains(searchQuery) ||
+                            u.Email.ToLower().Contains(searchQuery) ||
+                            u.Phone.Contains(searchQuery) ||
+                            u.Username.ToLower().Contains(searchQuery)));
+
+                
+                var totalCount = await patientsQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                var patients = await patientsQuery
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var patientDtos = patients.Select(patient => new
+                {
+                    UserId = patient.UserId,
+                    Username = patient.Username,
+                    PatientName = patient.PatientName,
+                    DateOfBirth = patient.DateOfBirth,
+                    Age = DateTime.Today.Year - patient.DateOfBirth.Year,
+                    Gender = patient.Gender,
+                    Phone = patient.Phone,
+                    Email = patient.Email
+                }).ToList();
+
+                return Ok(new
+                {
+                    Query = query,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Patients = patientDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("check-patient-access/{patientId}")]
+        //http://localhost:5062/api/doctor/check-patient-access/123
+        public async Task<IActionResult> CheckPatientAccess(int patientId)
+        {
+            try
+            {
+              
+                var doctorIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(doctorIdStr, out int doctorId))
+                {
+                    return BadRequest("Invalid doctor identifier");
+                }
+
+                var patientExists = await _context.StrokeUsers.AnyAsync(u => u.UserId == patientId);
+                if (!patientExists)
+                {
+                    return NotFound("Patient not found");
+                }
+
+                
+                var hasRelationship = await _context.Relationships
+                    .AnyAsync(r => r.InviterId == doctorId &&
+                                  r.UserId == patientId &&
+                                  r.RelationshipType == "doctor-patient");
+
+                if (!hasRelationship)
+                {
+                    return Ok(new
+                    {
+                        HasAccess = false,
+                        Message = "You do not have a doctor-patient relationship with this patient."
+                    });
+                }
+
+                return Ok(new
+                {
+                    HasAccess = true,
+                    Message = "You have access to this patient's data."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        // Helper method để tạo mã ngẫu nhiên
+        private string GenerateRandomCode(int length)
+        {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            var random = new Random();
+            return new string(Enumerable.Repeat(chars, length)
+                .Select(s => s[random.Next(s.Length)]).ToArray());
         }
     }
 }
