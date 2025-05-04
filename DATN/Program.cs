@@ -29,6 +29,7 @@ builder.Services.AddDbContext<StrokeDbContext>(options =>
 // Add Email Services
 builder.Services.AddSingleton<EmailService>();
 builder.Services.AddSingleton<IBackgroundEmailQueue>(new BackgroundEmailQueue(100));
+builder.Services.AddScoped<INotificationService, EmailNotificationService>();
 builder.Services.AddScoped<IEmailTemplateService, EmailTemplateService>();
 builder.Services.AddHostedService<EmailBackgroundService>();
 

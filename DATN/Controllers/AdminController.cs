@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using DATN.Data;
 using DATN.Dto;
 using DATN.Models;
+using System.Security.Claims;
 
 namespace DATN.Controllers
 {
@@ -290,42 +291,209 @@ namespace DATN.Controllers
         }
 
   
+        //[HttpGet("users")]
+        //[Authorize(Roles = "admin")]
+        ////http://localhost:5062/api/admin/users
+        //public async Task<IActionResult> GetAllUsers()
+        //{
+        //    try
+        //    {
+        //        var users = await _context.StrokeUsers.AsNoTracking().ToListAsync();
+        //        var userDtos = new List<object>();
+
+        //        foreach (var user in users)
+        //        {
+        //            var roles = await _context.UserRoles.AsNoTracking()
+        //                .Where(ur => ur.UserId == user.UserId && ur.IsActive)
+        //                .Select(ur => ur.Role.RoleName)
+        //                .ToListAsync();
+
+        //            userDtos.Add(new
+        //            {
+        //                UserId = user.UserId,
+        //                Username = user.Username,
+        //                Roles = roles,
+        //                PatientName = user.PatientName,
+        //                DateOfBirth = user.DateOfBirth,
+        //                Gender = user.Gender,
+        //                Phone = user.Phone,
+        //                Email = user.Email
+        //            });
+        //        }
+        //        return Ok(userDtos);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, $"An error occurred: {ex.Message}");
+        //    }
+        //}
         [HttpGet("users")]
-        [Authorize(Roles = "admin")]
+        [Authorize(Roles = "admin,doctor")]
         //http://localhost:5062/api/admin/users
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers([FromQuery] string? role = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             try
             {
-                var users = await _context.StrokeUsers.AsNoTracking().ToListAsync();
-                var userDtos = new List<object>();
+                
+                var currentUserRoles = User.Claims
+                    .Where(c => c.Type == ClaimTypes.Role)
+                    .Select(c => c.Value)
+                    .ToList();
 
-                foreach (var user in users)
+                
+                var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(currentUserIdStr, out int currentUserId))
                 {
-                    var roles = await _context.UserRoles.AsNoTracking()
-                        .Where(ur => ur.UserId == user.UserId && ur.IsActive)
-                        .Select(ur => ur.Role.RoleName)
+                    return BadRequest("Invalid user identifier");
+                }
+
+                IQueryable<StrokeUser> usersQuery = _context.StrokeUsers.AsNoTracking();
+
+               
+                if (!currentUserRoles.Contains("admin"))
+                {
+                   
+                    var patientUserIds = await _context.UserRoles
+                        .Where(ur => ur.Role.RoleName == "user" && ur.IsActive)
+                        .Select(ur => ur.UserId)
+                        .Distinct()
                         .ToListAsync();
 
-                    userDtos.Add(new
-                    {
-                        UserId = user.UserId,
-                        Username = user.Username,
-                        Roles = roles,
-                        PatientName = user.PatientName,
-                        DateOfBirth = user.DateOfBirth,
-                        Gender = user.Gender,
-                        Phone = user.Phone,
-                        Email = user.Email
-                    });
+
+                    usersQuery = usersQuery.Where(u => patientUserIds.Contains(u.UserId));
                 }
-                return Ok(userDtos);
+                
+                else if (!string.IsNullOrEmpty(role))
+                {
+                    
+                    var filteredUserIds = await _context.UserRoles
+                        .Where(ur => ur.Role.RoleName == role && ur.IsActive)
+                        .Select(ur => ur.UserId)
+                        .Distinct()
+                        .ToListAsync();
+
+                    
+                    usersQuery = usersQuery.Where(u => filteredUserIds.Contains(u.UserId));
+                }
+
+               
+                var totalCount = await usersQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+               
+                var paginatedUsers = await usersQuery
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                
+                var userIds = paginatedUsers.Select(u => u.UserId).ToList();
+                var allUserRoles = await _context.UserRoles
+                    .Where(ur => userIds.Contains(ur.UserId) && ur.IsActive)
+                    .Select(ur => new { ur.UserId, RoleName = ur.Role.RoleName })
+                    .ToListAsync();
+
+               
+                var userDtos = paginatedUsers.Select(user => new
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Roles = allUserRoles
+                        .Where(ur => ur.UserId == user.UserId)
+                        .Select(ur => ur.RoleName)
+                        .ToList(),
+                    PatientName = user.PatientName,
+                    DateOfBirth = user.DateOfBirth,
+                    Gender = user.Gender,
+                    Phone = user.Phone,
+                    Email = user.Email
+                }).ToList();
+
+                return Ok(new
+                {
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Users = userDtos
+                });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
+
+        [HttpGet("users/by-role/{roleName}")]
+        [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/users/by-role/doctor
+        public async Task<IActionResult> GetUsersByRole(string roleName, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                
+                var role = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName);
+                if (role == null)
+                    return BadRequest($"Role '{roleName}' does not exist.");
+
+                
+                var userIdsWithRole = await _context.UserRoles
+                    .Where(ur => ur.Role.RoleName == roleName && ur.IsActive)
+                    .Select(ur => ur.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                
+                var usersQuery = _context.StrokeUsers
+                    .AsNoTracking()
+                    .Where(u => userIdsWithRole.Contains(u.UserId));
+
+                
+                var totalCount = await usersQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+                var paginatedUsers = await usersQuery
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var userIds = paginatedUsers.Select(u => u.UserId).ToList();
+                var allUserRoles = await _context.UserRoles
+                    .Where(ur => userIds.Contains(ur.UserId) && ur.IsActive)
+                    .Select(ur => new { ur.UserId, RoleName = ur.Role.RoleName })
+                    .ToListAsync();
+
+                var userDtos = paginatedUsers.Select(user => new
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Roles = allUserRoles
+                        .Where(ur => ur.UserId == user.UserId)
+                        .Select(ur => ur.RoleName)
+                        .ToList(),
+                    PatientName = user.PatientName,
+                    DateOfBirth = user.DateOfBirth,
+                    Gender = user.Gender,
+                    Phone = user.Phone,
+                    Email = user.Email
+                }).ToList();
+
+                return Ok(new
+                {
+                    Role = roleName,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Users = userDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
         [HttpDelete("delete-user/{userId}")]
         [Authorize(Roles = "admin")]
         //http://localhost:5062/api/admin/delete-user/13
