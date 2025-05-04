@@ -396,5 +396,125 @@ namespace DATN.Controllers
                 return BadRequest(new { Success = false, Message = ex.Message });
             }
         }
+        [HttpGet("patients")]
+        //http://localhost:5062/api/doctor/patients
+        public async Task<IActionResult> GetPatients([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                
+                var patientUserIds = await _context.UserRoles
+                    .Where(ur => ur.Role.RoleName == "user" && ur.IsActive)
+                    .Select(ur => ur.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+              
+                var patientsQuery = _context.StrokeUsers
+                    .AsNoTracking()
+                    .Where(u => patientUserIds.Contains(u.UserId));
+
+               
+                var totalCount = await patientsQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+               
+                var patients = await patientsQuery
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var patientDtos = patients.Select(patient => new
+                {
+                    UserId = patient.UserId,
+                    Username = patient.Username,
+                    PatientName = patient.PatientName,
+                    DateOfBirth = patient.DateOfBirth,
+                    Age = DateTime.Today.Year - patient.DateOfBirth.Year,
+                    Gender = patient.Gender,
+                    Phone = patient.Phone,
+                    Email = patient.Email
+                }).ToList();
+
+                return Ok(new
+                {
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Patients = patientDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("patients/search")]
+        //http://localhost:5062/api/doctor/patients/search?query=nguyễn
+        public async Task<IActionResult> SearchPatients([FromQuery] string query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(query))
+                {
+                    return BadRequest("Search query cannot be empty");
+                }
+
+              
+                var patientUserIds = await _context.UserRoles
+                    .Where(ur => ur.Role.RoleName == "user" && ur.IsActive)
+                    .Select(ur => ur.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                
+                var searchQuery = query.ToLower();
+                var patientsQuery = _context.StrokeUsers
+                    .AsNoTracking()
+                    .Where(u => patientUserIds.Contains(u.UserId) &&
+                           (u.PatientName.ToLower().Contains(searchQuery) ||
+                            u.Email.ToLower().Contains(searchQuery) ||
+                            u.Phone.Contains(searchQuery) ||
+                            u.Username.ToLower().Contains(searchQuery)));
+
+               
+                var totalCount = await patientsQuery.CountAsync();
+                var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+               
+                var patients = await patientsQuery
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
+
+                var patientDtos = patients.Select(patient => new
+                {
+                    UserId = patient.UserId,
+                    Username = patient.Username,
+                    PatientName = patient.PatientName,
+                    DateOfBirth = patient.DateOfBirth,
+                    Age = DateTime.Today.Year - patient.DateOfBirth.Year,
+                    Gender = patient.Gender,
+                    Phone = patient.Phone,
+                    Email = patient.Email
+                }).ToList();
+
+                return Ok(new
+                {
+                    Query = query,
+                    TotalCount = totalCount,
+                    TotalPages = totalPages,
+                    CurrentPage = page,
+                    PageSize = pageSize,
+                    Patients = patientDtos
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }

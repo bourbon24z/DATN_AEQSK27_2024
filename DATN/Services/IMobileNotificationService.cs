@@ -6,9 +6,7 @@ namespace DATN.Services
 
     public interface IMobileNotificationService
     {
-        /// <summary>
-        /// Gửi thông báo đến một topic cụ thể
-        /// </summary>
+     
         /// <param name="topic">Topic để gửi thông báo</param>
         /// <param name="title">Tiêu đề thông báo</param>
         /// <param name="body">Nội dung thông báo</param>
@@ -22,9 +20,7 @@ namespace DATN.Services
             string notificationType,
             Dictionary<string, string> additionalData = null);
 
-        /// <summary>
-        /// Gửi thông báo đến một người dùng cụ thể
-        /// </summary>
+      
         /// <param name="userId">ID của người dùng</param>
         /// <param name="title">Tiêu đề thông báo</param>
         /// <param name="body">Nội dung thông báo</param>

@@ -33,22 +33,28 @@ namespace DATN.Controllers
         {
             // check  existing user
             var existingUser = await _context.StrokeUsers
-                .Where(u => 
-                u.Email == registerUserDto.Email || 
-                u.Phone == registerUserDto.Phone || 
-                u.Username == registerUserDto.Username)
-                .Select(u => new { u.Email,
-                                   u.Phone,
-                                   u.Username})
-                .FirstOrDefaultAsync();
-            var existingTempUser = await _context.UserRegistrationTemps
-                .Where(u => 
+                .Where(u =>
                 u.Email == registerUserDto.Email ||
                 u.Phone == registerUserDto.Phone ||
                 u.Username == registerUserDto.Username)
-                .Select(u => new { u.Email, 
-                                   u.Phone, 
-                                   u.Username })
+                .Select(u => new
+                {
+                    u.Email,
+                    u.Phone,
+                    u.Username
+                })
+                .FirstOrDefaultAsync();
+            var existingTempUser = await _context.UserRegistrationTemps
+                .Where(u =>
+                u.Email == registerUserDto.Email ||
+                u.Phone == registerUserDto.Phone ||
+                u.Username == registerUserDto.Username)
+                .Select(u => new
+                {
+                    u.Email,
+                    u.Phone,
+                    u.Username
+                })
                 .FirstOrDefaultAsync();
             if (existingUser != null)
             {
@@ -62,7 +68,7 @@ namespace DATN.Controllers
                 return BadRequest(string.Join(" ", errors));
             }
 
-            var otpCode = new Random().Next(100000, 999999).ToString();  
+            var otpCode = new Random().Next(100000, 999999).ToString();
             var tempUser = new UserRegistrationTemp
             {
                 Username = registerUserDto.Username,
@@ -79,7 +85,7 @@ namespace DATN.Controllers
             _context.UserRegistrationTemps.Add(tempUser);
             await _context.SaveChangesAsync();
 
-            
+
             var emailQueue = HttpContext.RequestServices.GetRequiredService<IBackgroundEmailQueue>();
             emailQueue.EnqueueEmail(async () =>
             {
@@ -120,7 +126,7 @@ namespace DATN.Controllers
             _context.StrokeUsers.Add(newUser);
             await _context.SaveChangesAsync();
 
-            
+
             var userRole = await _context.Roles.SingleOrDefaultAsync(r => r.RoleName == "user");
             if (userRole != null)
             {
@@ -154,7 +160,7 @@ namespace DATN.Controllers
                 return Unauthorized("Incorrect username or password.");
             }
 
-         
+
             var roles = await _context.UserRoles
                 .Where(ur => ur.UserId == dbUser.UserId && ur.IsActive)
                 .Select(ur => ur.Role.RoleName)
@@ -168,7 +174,7 @@ namespace DATN.Controllers
         new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString())
     };
 
-            
+
             foreach (var role in roles)
             {
                 claims.Add(new Claim(ClaimTypes.Role, role));
@@ -235,36 +241,36 @@ namespace DATN.Controllers
             });
         }
 
-        
+
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         //http://localhost:5062/api/User/forgot-password
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto forgotPasswordDto)
         {
-            
+
             var user = await _context.StrokeUsers.SingleOrDefaultAsync(u => u.Email == forgotPasswordDto.Email);
             if (user == null)
             {
-               
+
                 return Unauthorized("Email don't exist");
             }
 
-            
+
             var otp = new Random().Next(100000, 999999).ToString();
 
-            
+
             var userVerification = new UserVerification
             {
                 UserId = user.UserId,
                 Email = user.Email,
                 VerificationCode = otp,
-                OtpExpiry = DateTime.UtcNow.AddMinutes(15), 
+                OtpExpiry = DateTime.UtcNow.AddMinutes(15),
                 IsVerified = false
             };
             _context.UserVerifications.Add(userVerification);
             await _context.SaveChangesAsync();
 
-            
+
             await _emailService.SendEmailAsync(
                 user.Email,
                 "Password Reset OTP",
@@ -278,14 +284,14 @@ namespace DATN.Controllers
         //http://localhost:5062/api/User/reset-password
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
         {
-            
+
             var user = await _context.StrokeUsers.SingleOrDefaultAsync(u => u.Email == resetPasswordDto.Email);
             if (user == null)
             {
                 return BadRequest("Invalid request.");
             }
 
-            
+
             var verification = await _context.UserVerifications
                 .Where(v => v.Email == resetPasswordDto.Email &&
                             v.VerificationCode == resetPasswordDto.Otp &&
@@ -298,7 +304,7 @@ namespace DATN.Controllers
                 return BadRequest("Invalid or expired OTP.");
             }
 
-            
+
             user.Password = BCrypt.Net.BCrypt.HashPassword(resetPasswordDto.NewPassword);
             await _context.SaveChangesAsync();
 
@@ -333,35 +339,118 @@ namespace DATN.Controllers
                 return BadRequest("Current password is incorrect.");
             }
 
-          
+
             // check new pass dont match current pass
             if (changePasswordDto.CurrentPassword == changePasswordDto.NewPassword)
             {
                 return BadRequest("The new password must be different from the current password.");
             }
 
-            
+
             user.Password = BCrypt.Net.BCrypt.HashPassword(changePasswordDto.NewPassword);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Password has been updated successfully." });
         }
 
+
+        //[HttpGet("users/{id}")]
+        //// http://localhost:5062/api/admin/users/123
+        //public async Task<IActionResult> GetUserById(int id)
+        //{
+        //    try
+        //    {
+        //        var user = await _context.StrokeUsers.AsNoTracking()
+        //            .FirstOrDefaultAsync(u => u.UserId == id);
+
+        //        if (user == null)
+        //        {
+        //            return NotFound("User not found.");
+        //        }
+
+        //        var roles = await _context.UserRoles.AsNoTracking()
+        //            .Where(ur => ur.UserId == user.UserId && ur.IsActive)
+        //            .Select(ur => ur.Role.RoleName)
+        //            .ToListAsync();
+
+        //        var userDto = new
+        //        {
+        //            UserId = user.UserId,
+        //            Username = user.Username,
+        //            Roles = roles,
+        //            PatientName = user.PatientName,
+        //            DateOfBirth = user.DateOfBirth,
+        //            Gender = user.Gender,
+        //            Phone = user.Phone,
+        //            Email = user.Email
+        //        };
+
+        //        return Ok(userDto);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, $"An error occurred: {ex.Message}");
+        //    }
+        //}
         [HttpGet("users/{id}")]
-// http://localhost:5062/api/admin/users/123
+        [Authorize]
+        // http://localhost:5062/api/user/users/123
         public async Task<IActionResult> GetUserById(int id)
         {
             try
             {
-                var user = await _context.StrokeUsers.AsNoTracking()
+                
+                var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(currentUserIdStr, out int currentUserId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+                
+                var currentUserRoles = User.Claims
+                    .Where(c => c.Type == ClaimTypes.Role)
+                    .Select(c => c.Value)
+                    .ToList();
+
+                
+                bool hasAccess = false;
+
+                if (currentUserId == id)
+                {
+                    
+                    hasAccess = true;
+                }
+                else if (currentUserRoles.Contains("admin"))
+                {
+                    
+                    hasAccess = true;
+                }
+                else if (currentUserRoles.Contains("doctor"))
+                {
+                    
+                    var userRoles = await _context.UserRoles
+                        .Where(ur => ur.UserId == id && ur.IsActive)
+                        .Select(ur => ur.Role.RoleName)
+                        .ToListAsync();
+
+                    hasAccess = userRoles.Contains("user");
+                }
+
+                if (!hasAccess)
+                {
+                    return Forbid("You don't have permission to view this user's information");
+                }
+
+                var user = await _context.StrokeUsers
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.UserId == id);
 
                 if (user == null)
                 {
-                    return NotFound("User not found.");
+                    return NotFound("User not found");
                 }
 
-                var roles = await _context.UserRoles.AsNoTracking()
+                var roles = await _context.UserRoles
                     .Where(ur => ur.UserId == user.UserId && ur.IsActive)
                     .Select(ur => ur.Role.RoleName)
                     .ToListAsync();
@@ -386,8 +475,9 @@ namespace DATN.Controllers
             }
         }
 
+
         [HttpPost("user-gps")]
-        
+
         public async Task<IActionResult> PostUserGPS([FromBody] UserGpsDto userGpsDto)
         {
             var user = await _context.StrokeUsers
@@ -415,7 +505,7 @@ namespace DATN.Controllers
         }
 
         [HttpGet("user-gps")]
-        
+
         public async Task<IActionResult> GetUserGPS(int userId)
         {
             var user = await _context.StrokeUsers
@@ -425,16 +515,61 @@ namespace DATN.Controllers
                 return NotFound("User not found.");
             }
             var gpsData = await _context.Gps.FirstOrDefaultAsync(g => g.UserId == userId);
-			if (gpsData == null)
-			{
-				return NotFound("GPS data not found.");
-			}
-			return Ok(gpsData);
+            if (gpsData == null)
+            {
+                return NotFound("GPS data not found.");
+            }
+            return Ok(gpsData);
         }
 
 
+
+        [HttpGet("me")]
+        [Authorize] 
+                    //http://localhost:5062/api/user/me
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            try
+            {
+               
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+               
+                var user = await _context.StrokeUsers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserId == userId);
+
+                if (user == null)
+                    return NotFound("User not found");
+
+                
+                var roles = await _context.UserRoles
+                    .Where(ur => ur.UserId == userId && ur.IsActive)
+                    .Select(ur => ur.Role.RoleName)
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    UserId = user.UserId,
+                    Username = user.Username,
+                    Roles = roles,
+                    PatientName = user.PatientName,
+                    DateOfBirth = user.DateOfBirth,
+                    Gender = user.Gender,
+                    Phone = user.Phone,
+                    Email = user.Email
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
     }
-
-
 }
 
