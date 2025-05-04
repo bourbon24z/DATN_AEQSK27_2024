@@ -569,7 +569,142 @@ namespace DATN.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
+        [HttpGet("my-doctors")]
+        [Authorize]
+        //http://localhost:5062/api/user/my-doctors
+        public async Task<IActionResult> GetMyDoctors()
+        {
+            try
+            {
+               
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
 
+                
+                var relationships = await _context.Relationships
+                    .Include(r => r.Inviter)
+                    .Where(r => r.UserId == userId && r.RelationshipType == "doctor-patient")
+                    .ToListAsync();
+
+                if (!relationships.Any())
+                {
+                    return Ok(new
+                    {
+                        Message = "You don't have any doctors assigned.",
+                        Doctors = new List<object>()
+                    });
+                }
+
+                
+                var doctors = relationships.Select(r => new
+                {
+                    DoctorId = r.Inviter.UserId,
+                    DoctorName = r.Inviter.PatientName,
+                    Email = r.Inviter.Email,
+                    Phone = r.Inviter.Phone,
+                    RelationshipId = r.RelationshipId,
+                    CreatedAt = r.CreatedAt
+                }).ToList();
+
+                return Ok(new
+                {
+                    TotalCount = doctors.Count,
+                    Doctors = doctors
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpPost("use-invitation-code")]
+        [Authorize(Roles = "user")]
+        //http://localhost:5062/api/user/use-invitation-code
+        public async Task<IActionResult> UseInvitationCode([FromBody] UseInvitationCodeDto model)
+        {
+            try
+            {
+                
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+                
+                var invitationCode = await _context.InvitationCodes
+                    .Include(ic => ic.InviterUser)
+                    .FirstOrDefaultAsync(ic =>
+                        ic.Code == model.Code &&
+                        ic.Status == "active" &&
+                        ic.ExpiresAt > DateTime.UtcNow);
+
+                if (invitationCode == null)
+                {
+                    return BadRequest("Invalid or expired invitation code");
+                }
+
+               
+                var isDoctorInviter = await _context.UserRoles
+                    .AnyAsync(ur =>
+                        ur.UserId == invitationCode.InviterUserId &&
+                        ur.Role.RoleName == "doctor" &&
+                        ur.IsActive);
+
+                if (!isDoctorInviter)
+                {
+                    return BadRequest("This invitation code was not created by a doctor");
+                }
+
+            
+                var existingRelationship = await _context.Relationships
+                    .AnyAsync(r =>
+                        r.UserId == userId &&
+                        r.InviterId == invitationCode.InviterUserId &&
+                        r.RelationshipType == "doctor-patient");
+
+                if (existingRelationship)
+                {
+                    return BadRequest("You are already connected to this doctor");
+                }
+
+                
+                var relationship = new Relationship
+                {
+                    UserId = userId,
+                    InviterId = invitationCode.InviterUserId,
+                    RelationshipType = "doctor-patient",
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.Relationships.Add(relationship);
+
+                
+                invitationCode.Status = "used";
+
+                await _context.SaveChangesAsync();
+
+              
+                var doctor = invitationCode.InviterUser;
+
+                return Ok(new
+                {
+                    Message = "Successfully connected to doctor",
+                    DoctorId = doctor.UserId,
+                    DoctorName = doctor.PatientName,
+                    Email = doctor.Email,
+                    Phone = doctor.Phone
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
     }
 }
 
