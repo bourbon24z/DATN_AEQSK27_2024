@@ -228,8 +228,8 @@ namespace DATN.Controllers
 
         [HttpGet("get-relationship")]
         [Authorize]
-        //http://localhost:5062/api/invitation/get-relationship?userId=123
-        public async Task<IActionResult> GetRelationship(int userId)
+        //http://localhost:5062/api/invitation/get-relationship?userId=123&type=family
+        public async Task<IActionResult> GetRelationship(int userId, [FromQuery] string type = null)
         {
             try
             {
@@ -243,17 +243,26 @@ namespace DATN.Controllers
                
                 bool isAdmin = User.IsInRole("admin");
 
-                
+               
                 if (!isAdmin && currentUserId != userId)
                 {
                     return Forbid("You don't have permission to view these relationships.");
                 }
 
-                var relationships = await _dbContext.Relationships
+                
+                var relationshipsQuery = _dbContext.Relationships
                     .Include(r => r.User)
                     .Include(r => r.Inviter)
-                    .Where(r => r.UserId == userId || r.InviterId == userId)
-                    .ToListAsync();
+                    .Where(r => r.UserId == userId || r.InviterId == userId);
+
+                
+                if (!string.IsNullOrEmpty(type))
+                {
+                    relationshipsQuery = relationshipsQuery.Where(r => r.RelationshipType == type);
+                }
+
+                
+                var relationships = await relationshipsQuery.ToListAsync();
 
                 List<RelationshipDTO> relationshipDTOs = new List<RelationshipDTO>();
 
@@ -288,7 +297,7 @@ namespace DATN.Controllers
             }
         }
 
-        
+
         private string GenerateRandomCode(int length)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
