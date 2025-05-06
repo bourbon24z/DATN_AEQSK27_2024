@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DATN.Migrations
 {
     [DbContext(typeof(StrokeDbContext))]
-    [Migration("20250417024924_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250506114754_InititalCreate")]
+    partial class InititalCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -686,7 +686,7 @@ namespace DATN.Migrations
                         .HasColumnType("float")
                         .HasColumnName("heart_rate");
 
-                    b.Property<DateTime?>("RecordedAt")
+                    b.Property<DateTime>("RecordedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("recorded_at");
 

@@ -399,35 +399,35 @@ namespace DATN.Controllers
         {
             try
             {
-                
+
                 var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (!int.TryParse(currentUserIdStr, out int currentUserId))
                 {
                     return BadRequest("Invalid user identifier");
                 }
 
-                
+
                 var currentUserRoles = User.Claims
                     .Where(c => c.Type == ClaimTypes.Role)
                     .Select(c => c.Value)
                     .ToList();
 
-                
+
                 bool hasAccess = false;
 
                 if (currentUserId == id)
                 {
-                    
+
                     hasAccess = true;
                 }
                 else if (currentUserRoles.Contains("admin"))
                 {
-                    
+
                     hasAccess = true;
                 }
                 else if (currentUserRoles.Contains("doctor"))
                 {
-                    
+
                     var userRoles = await _context.UserRoles
                         .Where(ur => ur.UserId == id && ur.IsActive)
                         .Select(ur => ur.Role.RoleName)
@@ -525,20 +525,20 @@ namespace DATN.Controllers
 
 
         [HttpGet("me")]
-        [Authorize] 
-                    //http://localhost:5062/api/user/me
+        [Authorize]
+        //http://localhost:5062/api/user/me
         public async Task<IActionResult> GetCurrentUser()
         {
             try
             {
-               
+
                 var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (!int.TryParse(userIdStr, out int userId))
                 {
                     return BadRequest("Invalid user identifier");
                 }
 
-               
+
                 var user = await _context.StrokeUsers
                     .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.UserId == userId);
@@ -546,7 +546,7 @@ namespace DATN.Controllers
                 if (user == null)
                     return NotFound("User not found");
 
-                
+
                 var roles = await _context.UserRoles
                     .Where(ur => ur.UserId == userId && ur.IsActive)
                     .Select(ur => ur.Role.RoleName)
@@ -576,14 +576,14 @@ namespace DATN.Controllers
         {
             try
             {
-                
+
                 var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!int.TryParse(userIdStr, out int userId))
                 {
                     return BadRequest("Invalid user identifier");
                 }
 
-                
+
                 var relationships = await _context.Relationships
                     .Include(r => r.Inviter)
                     .Where(r => r.UserId == userId && r.RelationshipType == "doctor-patient")
@@ -598,7 +598,7 @@ namespace DATN.Controllers
                     });
                 }
 
-                
+
                 var doctors = relationships.Select(r => new
                 {
                     DoctorId = r.Inviter.UserId,
@@ -628,14 +628,14 @@ namespace DATN.Controllers
         {
             try
             {
-                
+
                 var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!int.TryParse(userIdStr, out int userId))
                 {
                     return BadRequest("Invalid user identifier");
                 }
 
-                
+
                 var invitationCode = await _context.InvitationCodes
                     .Include(ic => ic.InviterUser)
                     .FirstOrDefaultAsync(ic =>
@@ -648,7 +648,7 @@ namespace DATN.Controllers
                     return BadRequest("Invalid or expired invitation code");
                 }
 
-               
+
                 var isDoctorInviter = await _context.UserRoles
                     .AnyAsync(ur =>
                         ur.UserId == invitationCode.InviterUserId &&
@@ -660,7 +660,7 @@ namespace DATN.Controllers
                     return BadRequest("This invitation code was not created by a doctor");
                 }
 
-            
+
                 var existingRelationship = await _context.Relationships
                     .AnyAsync(r =>
                         r.UserId == userId &&
@@ -672,7 +672,7 @@ namespace DATN.Controllers
                     return BadRequest("You are already connected to this doctor");
                 }
 
-                
+
                 var relationship = new Relationship
                 {
                     UserId = userId,
@@ -683,12 +683,12 @@ namespace DATN.Controllers
 
                 _context.Relationships.Add(relationship);
 
-                
+
                 invitationCode.Status = "used";
 
                 await _context.SaveChangesAsync();
 
-              
+
                 var doctor = invitationCode.InviterUser;
 
                 return Ok(new
@@ -703,6 +703,684 @@ namespace DATN.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+
+        }
+
+
+        [HttpGet("health-profile")]
+        [Authorize]
+        // http://localhost:5062/api/User/health-profile
+        public async Task<IActionResult> GetHealthProfile()
+        {
+            try
+            {
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+                var user = await _context.StrokeUsers
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.UserId == userId);
+
+                if (user == null)
+                    return NotFound("User not found");
+
+                
+                var devices = await _context.Device
+                    .Where(d => d.UserId == userId)
+                    .Select(d => new
+                    {
+                        d.DeviceId,
+                        d.DeviceName,
+                        d.DeviceType,
+                        d.Series
+                    })
+                    .ToListAsync();
+
+             
+                var latestMedicalData = new Dictionary<string, object>();
+
+                if (devices.Any())
+                {
+                    
+                    var deviceIds = devices.Select(d => d.DeviceId).ToList();
+
+                    
+                    var medicalDataQuery = from d in _context.UserMedicalDatas
+                                           join dev in _context.Device on d.DeviceId equals dev.DeviceId
+                                           where deviceIds.Contains(dev.DeviceId)
+                                           group d by dev.DeviceType into g
+                                           select g.OrderByDescending(x => x.RecordedAt).FirstOrDefault();
+
+                    var latestData = await medicalDataQuery.ToListAsync();
+
+                    foreach (var data in latestData)
+                    {
+                        if (data != null)
+                        {
+                            var device = await _context.Device.FindAsync(data.DeviceId);
+                            string deviceName = device?.DeviceName ?? "Unknown Device";
+
+                            latestMedicalData[device?.DeviceType ?? "Unknown"] = new
+                            {
+                                DeviceName = deviceName,
+                                RecordedAt = data.RecordedAt,
+                                HeartRate = data.HeartRate,
+                                SystolicPressure = data.SystolicPressure,
+                                DiastolicPressure = data.DiastolicPressure,
+                                Temperature = data.Temperature,
+                                SpO2 = data.Spo2Information,
+                                BloodPh = data.BloodPh
+                            };
+                        }
+                    }
+                }
+
+                
+                var clinicalIndicator = await _context.ClinicalIndicators
+                    .Where(ci => ci.UserID == userId && ci.IsActived)
+                    .OrderByDescending(ci => ci.RecordedAt)
+                    .FirstOrDefaultAsync();
+
+                var molecularIndicator = await _context.MolecularIndicators
+                    .Where(mi => mi.UserID == userId && mi.IsActived)
+                    .OrderByDescending(mi => mi.RecordedAt)
+                    .FirstOrDefaultAsync();
+
+                var subclinicalIndicator = await _context.SubclinicalIndicators
+                    .Where(si => si.UserID == userId && si.IsActived)
+                    .OrderByDescending(si => si.RecordedAt)
+                    .FirstOrDefaultAsync();
+
+                
+                var recentCaseHistories = await _context.CaseHistories
+                    .Where(ch => ch.UserId == userId)
+                    .OrderByDescending(ch => ch.Time)
+                    .Take(5)
+                    .Select(ch => new
+                    {
+                        CaseHistoryId = ch.CaseHistoryId,
+                        Time = ch.Time.ToString("yyyy-MM-dd HH:mm:ss"),
+                        StatusOfMr = ch.StatusOfMr,
+                        ProgressNotes = ch.ProgressNotes != null && ch.ProgressNotes.Length > 100
+                            ? ch.ProgressNotes.Substring(0, 100) + "..."
+                            : ch.ProgressNotes
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    PersonalInfo = new
+                    {
+                        UserId = user.UserId,
+                        FullName = user.PatientName,
+                        DateOfBirth = user.DateOfBirth,
+                        Age = DateTime.Today.Year - user.DateOfBirth.Year,
+                        Gender = user.Gender ? "Nam" : "Nữ",
+                        Phone = user.Phone,
+                        Email = user.Email
+                    },
+                    Devices = devices,
+                    LatestMedicalData = latestMedicalData,
+                    HealthIndicators = new
+                    {
+                        Clinical = clinicalIndicator,
+                        Molecular = molecularIndicator,
+                        Subclinical = subclinicalIndicator
+                    },
+                    RecentCaseHistories = recentCaseHistories
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("health-records")]
+        [Authorize]
+        // http://localhost:5062/api/User/health-records
+        public async Task<IActionResult> GetHealthRecords([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, [FromQuery] string metric = "all")
+        {
+            try
+            {
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+                
+                if (!startDate.HasValue)
+                    startDate = DateTime.UtcNow.AddMonths(-1);
+                if (!endDate.HasValue)
+                    endDate = DateTime.UtcNow;
+
+                
+                var deviceIds = await _context.Device
+                    .Where(d => d.UserId == userId)
+                    .Select(d => d.DeviceId)
+                    .ToListAsync();
+
+                if (!deviceIds.Any())
+                {
+                    return Ok(new
+                    {
+                        Message = "No devices found for this user",
+                        Records = new List<object>()
+                    });
+                }
+
+              
+                var query = from d in _context.UserMedicalDatas
+                            join dev in _context.Device on d.DeviceId equals dev.DeviceId
+                            where deviceIds.Contains(dev.DeviceId) &&
+                                  d.RecordedAt >= startDate &&
+                                  d.RecordedAt <= endDate
+                            select new
+                            {
+                                DeviceId = dev.DeviceId,
+                                DeviceName = dev.DeviceName,
+                                DeviceType = dev.DeviceType,
+                                d.RecordedAt,
+                                d.HeartRate,
+                                d.SystolicPressure,
+                                d.DiastolicPressure,
+                                d.Temperature,
+                                SpO2 = d.Spo2Information,
+                                d.BloodPh
+                            };
+
+               
+                if (metric.ToLower() != "all")
+                {
+                    switch (metric.ToLower())
+                    {
+                        case "heartrate":
+                            query = query.Where(d => d.HeartRate.HasValue);
+                            break;
+                        case "bloodpressure":
+                            query = query.Where(d => d.SystolicPressure.HasValue || d.DiastolicPressure.HasValue);
+                            break;
+                        case "temperature":
+                            query = query.Where(d => d.Temperature.HasValue);
+                            break;
+                        case "spo2":
+                            query = query.Where(d => d.SpO2.HasValue);
+                            break;
+                        case "bloodph":
+                            query = query.Where(d => d.BloodPh.HasValue);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+                
+                var records = await query
+                    .OrderBy(d => d.RecordedAt)
+                    .ToListAsync();
+
+               
+                var heartRateData = records.Where(r => r.HeartRate.HasValue).ToList();
+                var systolicData = records.Where(r => r.SystolicPressure.HasValue).ToList();
+                var diastolicData = records.Where(r => r.DiastolicPressure.HasValue).ToList();
+                var temperatureData = records.Where(r => r.Temperature.HasValue).ToList();
+                var spo2Data = records.Where(r => r.SpO2.HasValue).ToList();
+                var bloodPhData = records.Where(r => r.BloodPh.HasValue).ToList();
+
+                var stats = new
+                {
+                    TotalReadings = records.Count,
+                    DateRange = new
+                    {
+                        From = startDate.Value.ToString("yyyy-MM-dd"),
+                        To = endDate.Value.ToString("yyyy-MM-dd")
+                    },
+                    Metrics = new
+                    {
+                        HeartRate = heartRateData.Any() ? new
+                        {
+                            Count = heartRateData.Count,
+                            Min = heartRateData.Min(r => r.HeartRate.Value),
+                            Max = heartRateData.Max(r => r.HeartRate.Value),
+                            Avg = heartRateData.Average(r => r.HeartRate.Value)
+                        } : null,
+                        BloodPressure = (systolicData.Any() || diastolicData.Any()) ? new
+                        {
+                            Count = systolicData.Count + diastolicData.Count,
+                            SystolicAvg = systolicData.Any() ? systolicData.Average(r => r.SystolicPressure.Value) : (double?)null,
+                            DiastolicAvg = diastolicData.Any() ? diastolicData.Average(r => r.DiastolicPressure.Value) : (double?)null
+                        } : null,
+                        Temperature = temperatureData.Any() ? new
+                        {
+                            Count = temperatureData.Count,
+                            Min = temperatureData.Min(r => r.Temperature.Value),
+                            Max = temperatureData.Max(r => r.Temperature.Value),
+                            Avg = temperatureData.Average(r => r.Temperature.Value)
+                        } : null,
+                        SpO2 = spo2Data.Any() ? new
+                        {
+                            Count = spo2Data.Count,
+                            Min = spo2Data.Min(r => r.SpO2.Value),
+                            Max = spo2Data.Max(r => r.SpO2.Value),
+                            Avg = spo2Data.Average(r => r.SpO2.Value)
+                        } : null,
+                        BloodPh = bloodPhData.Any() ? new
+                        {
+                            Count = bloodPhData.Count,
+                            Min = bloodPhData.Min(r => r.BloodPh.Value),
+                            Max = bloodPhData.Max(r => r.BloodPh.Value),
+                            Avg = bloodPhData.Average(r => r.BloodPh.Value)
+                        } : null
+                    }
+                };
+
+                return Ok(new
+                {
+                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    Statistics = stats,
+                    Records = records
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("health-records/metric/{metricType}")]
+        [Authorize]
+        // http://localhost:5062/api/User/health-records/metric/heartrate
+        public async Task<IActionResult> GetHealthRecordsByMetric(
+            string metricType,
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate,
+            [FromQuery] string groupBy = "day")
+        {
+            try
+            {
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+               
+                if (!startDate.HasValue)
+                    startDate = DateTime.UtcNow.AddMonths(-1);
+                if (!endDate.HasValue)
+                    endDate = DateTime.UtcNow;
+
+               
+                metricType = metricType.ToLower();
+                var validMetrics = new[] { "heartrate", "bloodpressure", "temperature", "spo2", "bloodph" };
+                if (!validMetrics.Contains(metricType))
+                {
+                    return BadRequest($"Invalid metric type. Valid options are: {string.Join(", ", validMetrics)}");
+                }
+
+                
+                var deviceIds = await _context.Device
+                    .Where(d => d.UserId == userId)
+                    .Select(d => d.DeviceId)
+                    .ToListAsync();
+
+                if (!deviceIds.Any())
+                {
+                    return Ok(new
+                    {
+                        Message = "No devices found for this user",
+                        Records = new List<object>()
+                    });
+                }
+
+               
+                var query = from d in _context.UserMedicalDatas
+                            join dev in _context.Device on d.DeviceId equals dev.DeviceId
+                            where deviceIds.Contains(dev.DeviceId) &&
+                                  d.RecordedAt >= startDate &&
+                                  d.RecordedAt <= endDate
+                            select new
+                            {
+                                DeviceId = dev.DeviceId,
+                                DeviceName = dev.DeviceName,
+                                DeviceType = dev.DeviceType,
+                                d.RecordedAt,
+                                d.HeartRate,
+                                d.SystolicPressure,
+                                d.DiastolicPressure,
+                                d.Temperature,
+                                SpO2 = d.Spo2Information,
+                                d.BloodPh
+                            };
+
+                
+                switch (metricType)
+                {
+                    case "heartrate":
+                        query = query.Where(d => d.HeartRate.HasValue);
+                        break;
+                    case "bloodpressure":
+                        query = query.Where(d => d.SystolicPressure.HasValue || d.DiastolicPressure.HasValue);
+                        break;
+                    case "temperature":
+                        query = query.Where(d => d.Temperature.HasValue);
+                        break;
+                    case "spo2":
+                        query = query.Where(d => d.SpO2.HasValue);
+                        break;
+                    case "bloodph":
+                        query = query.Where(d => d.BloodPh.HasValue);
+                        break;
+                }
+
+           
+                var allData = await query.OrderBy(d => d.RecordedAt).ToListAsync();
+
+                if (!allData.Any())
+                {
+                    return Ok(new
+                    {
+                        CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                        MetricType = metricType,
+                        DateRange = new { From = startDate.Value.ToString("yyyy-MM-dd"), To = endDate.Value.ToString("yyyy-MM-dd") },
+                        GroupedBy = groupBy,
+                        Message = "No data found for the specified metric and date range",
+                        DataPoints = new List<object>()
+                    });
+                }
+
+               
+                List<object> groupedData;
+
+                switch (groupBy.ToLower())
+                {
+                    case "hour":
+                        groupedData = allData
+                            .GroupBy(d => new { Date = d.RecordedAt.Date, Hour = d.RecordedAt.Hour })
+                            .OrderBy(g => g.Key.Date)
+                            .ThenBy(g => g.Key.Hour)
+                            .Select(g => CreateMetricData(g.ToList(), metricType, $"{g.Key.Date:yyyy-MM-dd} {g.Key.Hour}:00"))
+                            .ToList();
+                        break;
+
+                    case "day":
+                        groupedData = allData
+                            .GroupBy(d => d.RecordedAt.Date)
+                            .OrderBy(g => g.Key)
+                            .Select(g => CreateMetricData(g.ToList(), metricType, g.Key.ToString("yyyy-MM-dd")))
+                            .ToList();
+                        break;
+
+                    case "week":
+                        groupedData = allData
+                            .GroupBy(d => GetWeekNumber(d.RecordedAt))
+                            .OrderBy(g => g.Key)
+                            .Select(g => {
+                                var items = g.ToList();
+                                if (!items.Any()) return null;
+
+                                var firstItem = items.OrderBy(d => d.RecordedAt).First();
+                                var firstDayOfWeek = GetFirstDayOfWeek(firstItem.RecordedAt);
+                                var lastDayOfWeek = firstDayOfWeek.AddDays(6);
+                                var label = $"{firstDayOfWeek:yyyy-MM-dd} to {lastDayOfWeek:yyyy-MM-dd}";
+
+                                return CreateMetricData(items, metricType, label);
+                            })
+                            .Where(g => g != null)
+                            .ToList();
+                        break;
+
+                    case "month":
+                        groupedData = allData
+                            .GroupBy(d => new { Year = d.RecordedAt.Year, Month = d.RecordedAt.Month })
+                            .OrderBy(g => g.Key.Year)
+                            .ThenBy(g => g.Key.Month)
+                            .Select(g => CreateMetricData(g.ToList(), metricType, $"{g.Key.Year}-{g.Key.Month:D2}"))
+                            .ToList();
+                        break;
+
+                    default:
+                        return BadRequest("Invalid groupBy parameter. Valid options are: hour, day, week, month");
+                }
+
+                return Ok(new
+                {
+                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    MetricType = metricType,
+                    DateRange = new
+                    {
+                        From = startDate.Value.ToString("yyyy-MM-dd"),
+                        To = endDate.Value.ToString("yyyy-MM-dd")
+                    },
+                    GroupedBy = groupBy,
+                    DataPoints = groupedData
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        [HttpGet("devices")]
+        [Authorize]
+        // http://localhost:5062/api/User/devices
+        public async Task<IActionResult> GetUserDevices()
+        {
+            try
+            {
+                var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+                
+                var devicesQuery = from d in _context.Device
+                                   where d.UserId == userId
+                                   select new
+                                   {
+                                       d.DeviceId,
+                                       d.DeviceName,
+                                       d.DeviceType,
+                                       d.Series,
+                                       LastConnected = (from m in _context.UserMedicalDatas
+                                                        where m.DeviceId == d.DeviceId
+                                                        orderby m.RecordedAt descending
+                                                        select m.RecordedAt).FirstOrDefault(),
+                                       ReadingsCount = _context.UserMedicalDatas.Count(m => m.DeviceId == d.DeviceId)
+                                   };
+
+                var devices = await devicesQuery.ToListAsync();
+
+                if (!devices.Any())
+                {
+                    return Ok(new
+                    {
+                        CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                        Message = "No devices found for this user",
+                        Devices = new List<object>()
+                    });
+                }
+
+                return Ok(new
+                {
+                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    TotalDevices = devices.Count,
+                    Devices = devices
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+       
+        private int GetWeekNumber(DateTime date)
+        {
+            var culture = System.Globalization.CultureInfo.CurrentCulture;
+            var calendar = culture.Calendar;
+            return calendar.GetWeekOfYear(date, culture.DateTimeFormat.CalendarWeekRule, culture.DateTimeFormat.FirstDayOfWeek);
+        }
+
+        private DateTime GetFirstDayOfWeek(DateTime date)
+        {
+            var culture = System.Globalization.CultureInfo.CurrentCulture;
+            var diff = (7 + (date.DayOfWeek - culture.DateTimeFormat.FirstDayOfWeek)) % 7;
+            return date.AddDays(-diff).Date;
+        }
+
+        private object CreateMetricData<T>(IEnumerable<T> groupData, string metricType, string label)
+        {
+            if (groupData == null || !groupData.Any())
+            {
+                return new { Label = label, Count = 0 };
+            }
+
+            switch (metricType)
+            {
+                case "heartrate":
+                    {
+                        var validData = groupData.Where(d => GetProperty<float?>(d, "HeartRate") != null).ToList();
+                        if (!validData.Any()) return new { Label = label, Count = 0 };
+
+                        return new
+                        {
+                            Label = label,
+                            Count = validData.Count,
+                            Min = validData.Min(d => GetProperty<float?>(d, "HeartRate").Value),
+                            Max = validData.Max(d => GetProperty<float?>(d, "HeartRate").Value),
+                            Average = Math.Round(validData.Average(d => GetProperty<float?>(d, "HeartRate").Value), 1),
+                            Data = validData.Select(d => new
+                            {
+                                RecordedAt = GetProperty<DateTime>(d, "RecordedAt"),
+                                HeartRate = GetProperty<float?>(d, "HeartRate"),
+                                DeviceName = GetProperty<string>(d, "DeviceName")
+                            }).ToList()
+                        };
+                    }
+                case "bloodpressure":
+                    {
+                        var validData = groupData.Where(d =>
+                            GetProperty<float?>(d, "SystolicPressure") != null ||
+                            GetProperty<float?>(d, "DiastolicPressure") != null).ToList();
+
+                        if (!validData.Any()) return new { Label = label, Count = 0 };
+
+                        var systolicData = validData.Where(d => GetProperty<float?>(d, "SystolicPressure") != null).ToList();
+                        var diastolicData = validData.Where(d => GetProperty<float?>(d, "DiastolicPressure") != null).ToList();
+
+                        return new
+                        {
+                            Label = label,
+                            Count = validData.Count,
+                            SystolicAvg = systolicData.Any() ?
+                                Math.Round(systolicData.Average(d => GetProperty<float?>(d, "SystolicPressure").Value), 1) :
+                                (double?)null,
+                            DiastolicAvg = diastolicData.Any() ?
+                                Math.Round(diastolicData.Average(d => GetProperty<float?>(d, "DiastolicPressure").Value), 1) :
+                                (double?)null,
+                            Data = validData.Select(d => new
+                            {
+                                RecordedAt = GetProperty<DateTime>(d, "RecordedAt"),
+                                SystolicPressure = GetProperty<float?>(d, "SystolicPressure"),
+                                DiastolicPressure = GetProperty<float?>(d, "DiastolicPressure"),
+                                DeviceName = GetProperty<string>(d, "DeviceName")
+                            }).ToList()
+                        };
+                    }
+                case "temperature":
+                    {
+                        var validData = groupData.Where(d => GetProperty<float?>(d, "Temperature") != null).ToList();
+                        if (!validData.Any()) return new { Label = label, Count = 0 };
+
+                        return new
+                        {
+                            Label = label,
+                            Count = validData.Count,
+                            Min = validData.Min(d => GetProperty<float?>(d, "Temperature").Value),
+                            Max = validData.Max(d => GetProperty<float?>(d, "Temperature").Value),
+                            Average = Math.Round(validData.Average(d => GetProperty<float?>(d, "Temperature").Value), 1),
+                            Data = validData.Select(d => new
+                            {
+                                RecordedAt = GetProperty<DateTime>(d, "RecordedAt"),
+                                Temperature = GetProperty<float?>(d, "Temperature"),
+                                DeviceName = GetProperty<string>(d, "DeviceName")
+                            }).ToList()
+                        };
+                    }
+                case "spo2":
+                    {
+                        var validData = groupData.Where(d => GetProperty<float?>(d, "SpO2") != null).ToList();
+                        if (!validData.Any()) return new { Label = label, Count = 0 };
+
+                        return new
+                        {
+                            Label = label,
+                            Count = validData.Count,
+                            Min = validData.Min(d => GetProperty<float?>(d, "SpO2").Value),
+                            Max = validData.Max(d => GetProperty<float?>(d, "SpO2").Value),
+                            Average = Math.Round(validData.Average(d => GetProperty<float?>(d, "SpO2").Value), 1),
+                            Data = validData.Select(d => new
+                            {
+                                RecordedAt = GetProperty<DateTime>(d, "RecordedAt"),
+                                SpO2 = GetProperty<float?>(d, "SpO2"),
+                                DeviceName = GetProperty<string>(d, "DeviceName")
+                            }).ToList()
+                        };
+                    }
+                case "bloodph":
+                    {
+                        var validData = groupData.Where(d => GetProperty<float?>(d, "BloodPh") != null).ToList();
+                        if (!validData.Any()) return new { Label = label, Count = 0 };
+
+                        return new
+                        {
+                            Label = label,
+                            Count = validData.Count,
+                            Min = validData.Min(d => GetProperty<float?>(d, "BloodPh").Value),
+                            Max = validData.Max(d => GetProperty<float?>(d, "BloodPh").Value),
+                            Average = Math.Round(validData.Average(d => GetProperty<float?>(d, "BloodPh").Value), 2),
+                            Data = validData.Select(d => new
+                            {
+                                RecordedAt = GetProperty<DateTime>(d, "RecordedAt"),
+                                BloodPh = GetProperty<float?>(d, "BloodPh"),
+                                DeviceName = GetProperty<string>(d, "DeviceName")
+                            }).ToList()
+                        };
+                    }
+                default:
+                    return new { Label = label, Count = 0 };
+            }
+        }
+
+       
+        private TValue GetProperty<TValue>(object obj, string propertyName)
+        {
+            if (obj == null) return default;
+
+            var property = obj.GetType().GetProperty(propertyName);
+            if (property == null) return default;
+
+          
+            var value = property.GetValue(obj);
+            if (value == null) return default;
+
+           
+            try
+            {
+                return (TValue)value;
+            }
+            catch
+            {
+                return default;
             }
         }
     }
