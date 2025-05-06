@@ -41,6 +41,8 @@ builder.Services.AddScoped<INotificationFormatterService, NotificationFormatterS
 builder.Services.AddScoped<IMobileNotificationSenderService, MobileNotificationSenderService>();
 builder.Services.AddScoped<IDoctorService, DoctorService>();
 builder.Services.AddScoped<IMobileNotificationService, SignalRMobileNotificationService>();
+builder.Services.AddScoped<IHealthNotificationService, HealthNotificationService>();
+builder.Services.AddScoped<IPatientNotificationService, PatientNotificationService>();
 
 
 builder.Services.AddScoped<IUserService, UserService>();
@@ -61,8 +63,13 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
-        options.JsonSerializerOptions.MaxDepth = 64;
+       
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+
+        options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+
+        
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
 // Configure JWT

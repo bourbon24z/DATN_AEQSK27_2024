@@ -683,7 +683,7 @@ namespace DATN.Migrations
                         .HasColumnType("float")
                         .HasColumnName("heart_rate");
 
-                    b.Property<DateTime?>("RecordedAt")
+                    b.Property<DateTime>("RecordedAt")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("recorded_at");
 

@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DATN.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InititalCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -536,7 +536,7 @@ namespace DATN.Migrations
                     diastolic_pressure = table.Column<float>(type: "float", nullable: true),
                     temperature = table.Column<float>(type: "float", nullable: true),
                     blood_ph = table.Column<float>(type: "float", nullable: true),
-                    recorded_at = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    recorded_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     spo2_information = table.Column<float>(type: "float", nullable: true),
                     heart_rate = table.Column<float>(type: "float", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime(6)", nullable: false),

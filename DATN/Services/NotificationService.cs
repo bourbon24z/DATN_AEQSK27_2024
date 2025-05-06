@@ -44,41 +44,94 @@ namespace DATN.Services
         {
             try
             {
-              
+                if (_hubContext == null)
+                {
+                    Console.WriteLine($"[NotificationService] ERROR: _hubContext is null");
+                   
+                    return; 
+                }
+
                 var notification = new
                 {
-                   
                     id = Guid.NewGuid().ToString(),
-                    title = title,
-                    message = message,
-                    type = type.ToLower(),
+                    title = title ?? "Notification", 
+                    message = message ?? "No content", 
+                    type = (type ?? "warning").ToLower(),
                     timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 };
 
                 Console.WriteLine($"[NotificationService] Sending notification to userId {userId}");
 
-               
-                await _hubContext.Clients.Group(userId.ToString())
-                    .SendAsync("ReceiveNotification", notification);
-
-                Console.WriteLine($"[NotificationService] Notification sent successfully to group {userId}");
-
-                
-                Warning warningRecord = new Warning
+                try
                 {
-                    UserId = userId,
-                    Description = $"{title}\n{message}",
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true
-                };
-                _dbContext.Warnings.Add(warningRecord);
-                await _dbContext.SaveChangesAsync();
+                   
+                    await _hubContext.Clients.Group(userId.ToString())
+                        .SendAsync("ReceiveNotification", notification);
+                    Console.WriteLine($"[NotificationService] Notification sent successfully to group {userId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[NotificationService] ERROR sending SignalR notification: {ex.Message}");
+                   
+                }
 
-                Console.WriteLine($"[NotificationService] Notification saved to database with id {warningRecord.WarningId}");
+                try
+                {
+                    Console.WriteLine($"[NotificationService] Verifying user exists with ID {userId}");
+                    var userExists = await _dbContext.StrokeUsers.AnyAsync(u => u.UserId == userId);
+
+                    if (!userExists)
+                    {
+                        Console.WriteLine($"[NotificationService] WARNING: User with ID {userId} does not exist");
+                        return;
+                    }
+
+                    Console.WriteLine($"[NotificationService] Creating new Warning entity for user {userId}");
+
+                    var warningRecord = new Warning
+                    {
+                        UserId = userId,
+                        Description = $"{title}\n{message}",
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    };
+
+                    Console.WriteLine($"[NotificationService] Adding Warning to context");
+                    _dbContext.Warnings.Add(warningRecord);
+
+                    Console.WriteLine($"[NotificationService] Entity state: {_dbContext.Entry(warningRecord).State}");
+
+                    Console.WriteLine($"[NotificationService] Calling SaveChangesAsync()");
+                    var result = await _dbContext.SaveChangesAsync();
+
+                    Console.WriteLine($"[NotificationService] SaveChanges result: {result} row(s) affected");
+                    Console.WriteLine($"[NotificationService] Warning ID after save: {warningRecord.WarningId}");
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    Console.WriteLine($"[NotificationService] DATABASE ERROR: {dbEx.Message}");
+                    Console.WriteLine($"[NotificationService] Exception type: {dbEx.GetType().FullName}");
+
+                    if (dbEx.InnerException != null)
+                    {
+                        Console.WriteLine($"[NotificationService] Inner exception: {dbEx.InnerException.Message}");
+                    }
+
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[NotificationService] DATABASE ERROR: {ex.Message}");
+                    Console.WriteLine($"[NotificationService] Exception type: {ex.GetType().FullName}");
+                    Console.WriteLine($"[NotificationService] Stack trace: {ex.StackTrace}");
+
+                   
+                    throw;
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[NotificationService] ERROR sending notification to userId {userId}: {ex.Message}");
+                Console.WriteLine($"[NotificationService] GENERAL ERROR: {ex.Message}");
                 Console.WriteLine($"[NotificationService] Stack trace: {ex.StackTrace}");
                 throw;
             }
@@ -104,5 +157,30 @@ namespace DATN.Services
            
             return Task.CompletedTask;
         }
+        public async Task SendNotificationToRolesAsync(IEnumerable<string> roles, string title, string message, string type = "warning")
+        {
+            try
+            {
+                
+                var userIds = await _dbContext.UserRoles
+                    .Where(ur => roles.Contains(ur.Role.RoleName) && ur.IsActive)
+                    .Select(ur => ur.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                Console.WriteLine($"[NotificationService] Sending notification to {userIds.Count} users with roles: {string.Join(", ", roles)}");
+
+                
+                var tasks = userIds.Select(userId =>
+                    SendWebNotificationAsync(userId, title, message, type));
+
+                await Task.WhenAll(tasks);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[NotificationService] ERROR sending notification to roles {string.Join(", ", roles)}: {ex.Message}");
+                throw;
+            }
+        }      
     }
 }

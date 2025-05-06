@@ -8,16 +8,11 @@ namespace DATN.Services
     {
         
         Task SendNotificationAsync(string toEmail, string subject, string message);
-
-       
         Task SendWebNotificationAsync(int userId, string title, string message, string type = "warning");
-
-       
         Task<List<Warning>> GetUserWarningsAsync(int userId, int count = 10);
-
-       
         Task SendMobileNotificationAsync(string title, string message, IList<string> deviceTokens);
         Task SendWebNotificationAsync(string title, string message, IList<WebPushSubscription> subscriptions);
+        Task SendNotificationToRolesAsync(IEnumerable<string> roles, string title, string message, string type = "warning");
     }
 
     

@@ -33,5 +33,6 @@ namespace DATN.Services
             string body,
             string notificationType,
             Dictionary<string, string> additionalData = null);
+        
     }
 }

@@ -1,7 +1,11 @@
-﻿using DATN.Hubs;
+﻿using DATN.Data;
+using DATN.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace DATN.Services
@@ -10,13 +14,51 @@ namespace DATN.Services
     {
         private readonly IHubContext<NotificationHub> _hubContext;
         private readonly ILogger<SignalRMobileNotificationService> _logger;
+        private readonly StrokeDbContext _dbContext; 
 
         public SignalRMobileNotificationService(
             IHubContext<NotificationHub> hubContext,
-            ILogger<SignalRMobileNotificationService> logger)
+            ILogger<SignalRMobileNotificationService> logger,
+            StrokeDbContext dbContext) 
         {
             _hubContext = hubContext;
             _logger = logger;
+            _dbContext = dbContext; 
+        }
+
+        public async Task<bool> SendNotificationToRolesAsync(
+            IEnumerable<string> roles,
+            string title,
+            string body,
+            string notificationType,
+            Dictionary<string, string> additionalData = null)
+        {
+            try
+            {
+                
+                var userIds = await _dbContext.UserRoles
+                    .Where(ur => roles.Contains(ur.Role.RoleName) && ur.IsActive)
+                    .Select(ur => ur.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                _logger.LogInformation($"Gửi thông báo đến {userIds.Count} người dùng với roles: {string.Join(", ", roles)}");
+
+                
+                var notification = CreateNotificationObject(title, body, notificationType, additionalData);
+
+               
+                var tasks = userIds.Select(userId =>
+                    _hubContext.Clients.Group(userId.ToString()).SendAsync("ReceiveNotification", notification));
+
+                await Task.WhenAll(tasks);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Lỗi khi gửi thông báo đến roles: {string.Join(", ", roles)}");
+                return false;
+            }
         }
 
         public async Task<bool> SendNotificationToTopicAsync(
@@ -28,7 +70,7 @@ namespace DATN.Services
         {
             try
             {
-               
+                
                 var notification = CreateNotificationObject(title, body, notificationType, additionalData);
 
                 
@@ -76,7 +118,8 @@ namespace DATN.Services
             string type,
             Dictionary<string, string> additionalData = null)
         {
-            var notification = new
+           
+            var baseNotification = new
             {
                 id = Guid.NewGuid().ToString(),
                 title = title,
@@ -86,7 +129,21 @@ namespace DATN.Services
             };
 
             
-            return notification;
+            if (additionalData != null && additionalData.Count > 0)
+            {
+                
+                var props = baseNotification.GetType().GetProperties()
+                    .ToDictionary(p => p.Name, p => p.GetValue(baseNotification));
+
+                foreach (var item in additionalData)
+                {
+                    props[item.Key] = item.Value;
+                }
+
+                return props;
+            }
+
+            return baseNotification;
         }
     }
 }

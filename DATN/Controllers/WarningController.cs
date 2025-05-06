@@ -19,13 +19,19 @@ namespace DATN.Controllers
         private readonly INotificationService _notificationService;
         private readonly INotificationFormatterService _notificationFormatter;
         private readonly IMobileNotificationService _mobileNotificationService;
+        private readonly IHealthNotificationService _healthNotificationService;
+        private readonly IPatientNotificationService _patientNotificationService;
 
-        public WarningController(StrokeDbContext context, INotificationService notificationService, INotificationFormatterService notificationFormatter, IMobileNotificationService mobileNotificationService)
+        public WarningController(StrokeDbContext context, INotificationService notificationService, 
+                                                          INotificationFormatterService notificationFormatter, 
+                                                          IMobileNotificationService mobileNotificationService, 
+                                                          IPatientNotificationService patientNotificationService)
         {
-            _context = context;
-            _notificationService = notificationService;
-            _notificationFormatter = notificationFormatter;
-            _mobileNotificationService = mobileNotificationService;
+                                _context = context;
+                                _notificationService = notificationService;
+                                _notificationFormatter = notificationFormatter;
+                                _mobileNotificationService = mobileNotificationService;
+                                _patientNotificationService = patientNotificationService;
         }
 
         [HttpPost("device-reading")]
@@ -181,7 +187,7 @@ namespace DATN.Controllers
             {
                 Console.WriteLine($"[WarningController] Đã phát hiện tình trạng {classification} cho người dùng ID {deviceData.UserId}");
 
-                // sned email
+                // send mail notification
                 await _notificationService.SendNotificationAsync(strokeUser.Email, "Cảnh báo", formattedDescription);
                 Console.WriteLine($"[WarningController] Đã gửi thông báo email cho {strokeUser.Email}");
 
@@ -193,6 +199,14 @@ namespace DATN.Controllers
                     classification.ToLower()
                 );
                 Console.WriteLine($"[WarningController] Đã gửi thông báo web cho người dùng ID {deviceData.UserId}");
+
+                
+                await _patientNotificationService.SendNotificationToPatientCircleAsync(
+                    deviceData.UserId,
+                    classification == "WARNING" ? "Cảnh Báo Sức Khỏe Bệnh Nhân" : "Cảnh Báo Sức Khỏe",
+                    $"Bệnh nhân {strokeUser.PatientName} (ID: {deviceData.UserId}) có chỉ số bất thường: {details}",
+                    classification.ToLower()
+                );
 
                 // send mobile notification
                 if (_mobileNotificationService != null)
@@ -312,5 +326,7 @@ namespace DATN.Controllers
 
             return $"{classificationVietnamese}: {content}";
         }
+
+
     }
 }
