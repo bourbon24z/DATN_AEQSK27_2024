@@ -157,14 +157,24 @@ namespace DATN.Controllers
 
             if (dbUser == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, dbUser.Password))
             {
-                return Unauthorized("Incorrect username or password.");
+                return Unauthorized("Sai tên đăng nhập hoặc mật khẩu.");
             }
 
-
+            
             var roles = await _context.UserRoles
                 .Where(ur => ur.UserId == dbUser.UserId && ur.IsActive)
-                .Select(ur => ur.Role.RoleName)
+                .Join(_context.Roles,
+                    ur => ur.RoleId,
+                    r => r.RoleId,
+                    (ur, r) => r.RoleName)
+                .Distinct() 
                 .ToListAsync();
+
+            
+            if (roles.Count == 0)
+            {
+                return Unauthorized("Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên.");
+            }
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes("huynguyencutephomaiquenhatthegioi12345!");
@@ -173,7 +183,6 @@ namespace DATN.Controllers
     {
         new Claim(ClaimTypes.NameIdentifier, dbUser.UserId.ToString())
     };
-
 
             foreach (var role in roles)
             {
@@ -193,7 +202,7 @@ namespace DATN.Controllers
 
             return Ok(new
             {
-                message = "Login Succesfully.",
+                message = "Đăng nhập thành công.",
                 data = new
                 {
                     dbUser.UserId,
