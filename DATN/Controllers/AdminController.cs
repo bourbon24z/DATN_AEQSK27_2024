@@ -292,19 +292,30 @@ namespace DATN.Controllers
             }
         }
 
-       
+
         [HttpGet("user-roles/{userId}")]
         [Authorize(Roles = "admin")]
-        //http://localhost:5062/api/admin/user-roles/13
-        public async Task<IActionResult> GetUserRoles(int userId)
+        public async Task<IActionResult> GetUserRoles(int userId, [FromQuery] bool includeInactive = false)
         {
             try
             {
-                var roles = await _context.UserRoles
-                    .Where(ur => ur.UserId == userId && ur.IsActive)
-                    .Select(ur => ur.Role.RoleName)
+                IQueryable<UserRole> query = _context.UserRoles.Where(ur => ur.UserId == userId);
+
+                if (!includeInactive)
+                {
+                    query = query.Where(ur => ur.IsActive);
+                }
+
+                var result = await query
+                    .Include(ur => ur.Role)
+                    .Select(ur => new
+                    {
+                        RoleName = ur.Role.RoleName,
+                        IsActive = ur.IsActive
+                    })
                     .ToListAsync();
-                return Ok(roles);
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -312,7 +323,7 @@ namespace DATN.Controllers
             }
         }
 
-  
+
         //[HttpGet("users")]
         //[Authorize(Roles = "admin")]
         ////http://localhost:5062/api/admin/users
