@@ -126,7 +126,7 @@ namespace DATN.Controllers
 
 
 
-        [HttpPost("add-admin-role/{userId}")]
+        [HttpPost("add-admin-role")]
         [Authorize(Roles = "admin")]
         //http://localhost:5062/api/admin/add-admin-role
         public async Task<IActionResult> AddAdminRole([FromBody] AddAdminRoleDto model)
@@ -137,21 +137,43 @@ namespace DATN.Controllers
                 if (user == null)
                     return NotFound($"The user with UserId {model.UserId} does not exist.");
 
-                var adminRole = await GetOrCreateAdminRoleAsync();
-                if (!await _context.UserRoles.AnyAsync(ur => ur.UserId == model.UserId && ur.RoleId == adminRole.RoleId))
+                
+                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "user");
+
+                if (adminRole == null)
+                    return NotFound("Admin role not found in the system.");
+
+                var hasAdminRole = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == model.UserId && ur.RoleId == adminRole.RoleId && ur.IsActive);
+
+                if (hasAdminRole)
+                    return BadRequest("The user already has the admin role.");
+
+                
+                if (userRole != null)
                 {
-                    _context.UserRoles.Add(new UserRole
+                    var userRoleAssignment = await _context.UserRoles
+                        .FirstOrDefaultAsync(ur => ur.UserId == model.UserId && ur.RoleId == userRole.RoleId && ur.IsActive);
+
+                    if (userRoleAssignment != null)
                     {
-                        UserId = model.UserId,
-                        RoleId = adminRole.RoleId,
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    });
-                    await _context.SaveChangesAsync();
-                    return Ok($"The admin role has been assigned to user {model.UserId}.");
+                        userRoleAssignment.IsActive = false;
+                        // _context.UserRoles.Remove(userRoleAssignment);
+                    }
                 }
 
-                return BadRequest("The user already has the admin role.");
+               
+                _context.UserRoles.Add(new UserRole
+                {
+                    UserId = model.UserId,
+                    RoleId = adminRole.RoleId,
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                });
+
+                await _context.SaveChangesAsync();
+                return Ok($"The admin role has been assigned to user {model.UserId} and user role has been removed.");
             }
             catch (Exception ex)
             {
@@ -530,37 +552,50 @@ namespace DATN.Controllers
         {
             try
             {
-               
-                var adminAssignment = await _context.UserRoles
-                    .Include(ur => ur.Role)
-                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.Role.RoleName.ToLower() == "admin");
-
-                if (adminAssignment == null)
-                    return NotFound("The user does not have an admin role assigned.");
+                var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(currentUserIdStr, out int currentUserId) && userId == currentUserId)
+                {
+                    return BadRequest("You cannot remove your own admin privileges.");
+                }
 
                 
-                var defaultRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "user");
-                if (defaultRole == null)
-                    return BadRequest("Default role 'User' does not exist. Please create it first.");
+                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "user");
 
-               
-                bool hasDefaultRole = await _context.UserRoles
-                    .AnyAsync(ur => ur.UserId == userId && ur.RoleId == defaultRole.RoleId);
+                if (adminRole == null)
+                    return NotFound("Admin role not found in the system.");
+                if (userRole == null)
+                    return NotFound("User role not found in the system.");
 
-                if (hasDefaultRole)
+                
+                var adminRoleAssignment = await _context.UserRoles
+                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.RoleId && ur.IsActive);
+
+                if (adminRoleAssignment == null)
+                    return NotFound("The user does not have an admin role.");
+
+                
+                adminRoleAssignment.IsActive = false;
+                //_context.UserRoles.Remove(adminRoleAssignment);
+
+                
+                var hasUserRole = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
+
+                
+                if (!hasUserRole)
                 {
-                    // check duplicate
-                    _context.UserRoles.Remove(adminAssignment);
-                }
-                else
-                {
-                    
-                    adminAssignment.RoleId = defaultRole.RoleId;
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = userId,
+                        RoleId = userRole.RoleId,
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    });
                 }
 
                 await _context.SaveChangesAsync();
-
-                return Ok("Admin role has been removed and the user is assigned the default 'User' role.");
+                return Ok($"Admin role has been removed from user {userId} and user role has been assigned as default.");
             }
             catch (Exception ex)
             {
