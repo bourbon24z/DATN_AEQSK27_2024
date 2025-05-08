@@ -685,6 +685,136 @@ namespace DATN.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
+        [HttpPost("toggle-account-status")]
+        [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/admin/toggle-account-status
+        public async Task<IActionResult> ToggleAccountStatus([FromBody] ToggleAccountStatusDto model)
+        {
+            try
+            {
+                if (model == null || !model.UserId.HasValue)
+                    return BadRequest("Yêu cầu phải có ID người dùng");
+
+                int userId = model.UserId.Value;
+                bool activateAccount = model.Activate ?? false;// default is false
+
+               
+                var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(currentUserIdStr, out int currentUserId) && userId == currentUserId)
+                {
+                    return BadRequest("Bạn không thể khóa tài khoản của chính mình");
+                }
+
+                var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
+                if (user == null)
+                    return NotFound($"Không tìm thấy người dùng có ID {userId}");
+
+                
+                var userRolesWithRoleInfo = await _context.UserRoles
+                    .Include(ur => ur.Role)
+                    .Where(ur => ur.UserId == userId)
+                    .ToListAsync();
+
+                if (!userRolesWithRoleInfo.Any())
+                    return NotFound($"Người dùng {userId} không có role nào");
+
+               
+                if (!activateAccount)
+                {
+                    var isAdmin = userRolesWithRoleInfo.Any(ur => ur.Role.RoleName.ToLower() == "admin" && ur.IsActive);
+                    if (isAdmin)
+                    {
+                        var adminRoleId = userRolesWithRoleInfo.First(ur => ur.Role.RoleName.ToLower() == "admin").RoleId;
+
+                        var activeAdminCount = await _context.UserRoles
+                            .CountAsync(ur => ur.RoleId == adminRoleId && ur.IsActive && ur.UserId != userId);
+
+                        if (activeAdminCount < 1)
+                        {
+                            return BadRequest("Không thể khóa tài khoản admin cuối cùng. Hãy tạo admin khác trước.");
+                        }
+                    }
+                }
+
+                var previousRoleStatus = userRolesWithRoleInfo
+                    .Where(ur => ur.IsActive)
+                    .Select(ur => ur.Role.RoleName)
+                    .Distinct()
+                    .ToList();
+
+                if (activateAccount)
+                {
+                   
+                    var distinctRoleNames = userRolesWithRoleInfo
+                        .Select(ur => ur.Role.RoleName)
+                        .Distinct()
+                        .ToList();
+
+                    foreach (var roleName in distinctRoleNames)
+                    {
+                        
+                        var roleToActivate = userRolesWithRoleInfo
+                            .Where(ur => ur.Role.RoleName == roleName)
+                            .OrderBy(ur => ur.UserRoleId)
+                            .FirstOrDefault();
+
+                        if (roleToActivate != null)
+                        {
+                            roleToActivate.IsActive = true;
+
+                            
+                            foreach (var duplicateRole in userRolesWithRoleInfo.Where(ur =>
+                                ur.Role.RoleName == roleName && ur.UserRoleId != roleToActivate.UserRoleId))
+                            {
+                                duplicateRole.IsActive = false;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    
+                    foreach (var role in userRolesWithRoleInfo)
+                    {
+                        role.IsActive = false;
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Lấy danh sách role sau khi cập nhật
+                var updatedRoles = await _context.UserRoles
+                    .Where(ur => ur.UserId == userId && ur.IsActive)
+                    .Join(_context.Roles,
+                        ur => ur.RoleId,
+                        r => r.RoleId,
+                        (ur, r) => r.RoleName)
+                    .Distinct()
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = activateAccount
+                        ? $"Đã mở khóa tài khoản cho người dùng {userId}"
+                        : $"Đã khóa tài khoản của người dùng {userId}",
+                    user = new
+                    {
+                        userId = user.UserId,
+                        username = user.Username,
+                        patientName = user.PatientName,
+                        email = user.Email,
+                        status = activateAccount ? "Hoạt động" : "Đã khóa",
+                        previousRoles = previousRoleStatus,
+                        currentRoles = updatedRoles
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Đã xảy ra lỗi: {ex.Message}");
+            }
+        }
 
         [HttpGet("relationships")]
         [Authorize(Roles = "admin")]
