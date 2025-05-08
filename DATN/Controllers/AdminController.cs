@@ -361,19 +361,17 @@ namespace DATN.Controllers
         //    }
         //}
         [HttpGet("users")]
-        [Authorize(Roles = "admin,doctor")]
+        [Authorize(Roles = "admin")]
         //http://localhost:5062/api/admin/users
         public async Task<IActionResult> GetAllUsers([FromQuery] string? role = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {
             try
             {
-                
                 var currentUserRoles = User.Claims
                     .Where(c => c.Type == ClaimTypes.Role)
                     .Select(c => c.Value)
                     .ToList();
 
-                
                 var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (!int.TryParse(currentUserIdStr, out int currentUserId))
                 {
@@ -382,64 +380,77 @@ namespace DATN.Controllers
 
                 IQueryable<StrokeUser> usersQuery = _context.StrokeUsers.AsNoTracking();
 
-               
                 if (!currentUserRoles.Contains("admin"))
                 {
-                   
                     var patientUserIds = await _context.UserRoles
                         .Where(ur => ur.Role.RoleName == "user" && ur.IsActive)
                         .Select(ur => ur.UserId)
                         .Distinct()
                         .ToListAsync();
 
-
                     usersQuery = usersQuery.Where(u => patientUserIds.Contains(u.UserId));
                 }
-                
                 else if (!string.IsNullOrEmpty(role))
                 {
-                    
                     var filteredUserIds = await _context.UserRoles
                         .Where(ur => ur.Role.RoleName == role && ur.IsActive)
                         .Select(ur => ur.UserId)
                         .Distinct()
                         .ToListAsync();
 
-                    
                     usersQuery = usersQuery.Where(u => filteredUserIds.Contains(u.UserId));
                 }
 
-               
                 var totalCount = await usersQuery.CountAsync();
                 var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
 
-               
                 var paginatedUsers = await usersQuery
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
 
-                
                 var userIds = paginatedUsers.Select(u => u.UserId).ToList();
+
+                
                 var allUserRoles = await _context.UserRoles
                     .Where(ur => userIds.Contains(ur.UserId) && ur.IsActive)
                     .Select(ur => new { ur.UserId, RoleName = ur.Role.RoleName })
                     .ToListAsync();
 
-               
-                var userDtos = paginatedUsers.Select(user => new
+                
+                var userRoleCounts = await _context.UserRoles
+                    .Where(ur => userIds.Contains(ur.UserId))
+                    .GroupBy(ur => ur.UserId)
+                    .Select(g => new
+                    {
+                        UserId = g.Key,
+                        TotalRoles = g.Count(),
+                        ActiveRoles = g.Count(ur => ur.IsActive)
+                    })
+                    .ToListAsync();
+
+                var userDtos = paginatedUsers.Select(user =>
                 {
-                    UserId = user.UserId,
-                    Username = user.Username,
-                    Roles = allUserRoles
-                        .Where(ur => ur.UserId == user.UserId)
-                        .Select(ur => ur.RoleName)
-                        .ToList(),
-                    PatientName = user.PatientName,
-                    DateOfBirth = user.DateOfBirth,
-                    Gender = user.Gender,
-                    Phone = user.Phone,
-                    Email = user.Email
+                    
+                    var roleInfo = userRoleCounts.FirstOrDefault(rc => rc.UserId == user.UserId);
+                    bool isLocked = roleInfo != null && roleInfo.ActiveRoles == 0;
+
+                    return new
+                    {
+                        UserId = user.UserId,
+                        Username = user.Username,
+                        Roles = allUserRoles
+                            .Where(ur => ur.UserId == user.UserId)
+                            .Select(ur => ur.RoleName)
+                            .ToList(),
+                        PatientName = user.PatientName,
+                        DateOfBirth = user.DateOfBirth,
+                        Gender = user.Gender,
+                        Phone = user.Phone,
+                        Email = user.Email,
+                        AccountStatus = isLocked ? "Locked" : "Active",
+                        IsLocked = isLocked
+                    };
                 }).ToList();
 
                 return Ok(new
