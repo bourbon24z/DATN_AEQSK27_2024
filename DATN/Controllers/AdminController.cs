@@ -24,19 +24,6 @@ namespace DATN.Controllers
             _context = context;
         }
 
-        
-        private async Task<Role> GetOrCreateAdminRoleAsync()
-        {
-            var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
-            if (adminRole == null)
-            {
-                adminRole = new Role { RoleName = "admin" };
-                _context.Roles.Add(adminRole);
-                await _context.SaveChangesAsync();
-            }
-            return adminRole;
-        }
-
         private async Task<List<string>> ValidateDuplicateAdminAsync(CreateAdminDto dto)
         {
             var duplicateUser = await _context.StrokeUsers
@@ -158,8 +145,8 @@ namespace DATN.Controllers
 
                     if (userRoleAssignment != null)
                     {
-                        userRoleAssignment.IsActive = false;
-                        // _context.UserRoles.Remove(userRoleAssignment);
+                        //userRoleAssignment.IsActive = false;
+                        _context.UserRoles.Remove(userRoleAssignment);
                     }
                 }
 
@@ -205,8 +192,9 @@ namespace DATN.Controllers
                     .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
                 if (userRoleEntity != null)
                 {
-                    userRoleEntity.IsActive = false;
-                    // _context.UserRoles.Remove(userRoleEntity); // del thủ công
+                    //userRoleEntity.IsActive = false;
+                    _context.UserRoles.Remove(userRoleEntity);
+                    //await _context.SaveChangesAsync();
                 }
 
                 
@@ -244,8 +232,8 @@ namespace DATN.Controllers
                     return NotFound(new { message = $"'Doctor' role does not exist on User {userId}." });
 
                 
-                doctorRoleEntity.IsActive = false;
-                // _context.UserRoles.Remove(doctorRoleEntity); // del thủ công
+                //doctorRoleEntity.IsActive = false;
+                _context.UserRoles.Remove(doctorRoleEntity); // del thủ công
 
               
                 var hasUserRole = await _context.UserRoles
@@ -597,10 +585,10 @@ namespace DATN.Controllers
                     return NotFound("The user does not have an admin role.");
 
                 
-                adminRoleAssignment.IsActive = false;
-                //_context.UserRoles.Remove(adminRoleAssignment);
+                //adminRoleAssignment.IsActive = false;
+                _context.UserRoles.Remove(adminRoleAssignment);
 
-                
+
                 var hasUserRole = await _context.UserRoles
                     .AnyAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
 
