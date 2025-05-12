@@ -631,7 +631,7 @@ namespace DATN.Controllers
         }
 
         [HttpPost("use-invitation-code")]
-        [Authorize(Roles = "user")]
+        [Authorize]
         //http://localhost:5062/api/user/use-invitation-code
         public async Task<IActionResult> UseInvitationCode([FromBody] UseInvitationCodeDto model)
         {
@@ -643,7 +643,15 @@ namespace DATN.Controllers
                 {
                     return BadRequest("Invalid user identifier");
                 }
+                var userRoles = User.Claims
+           .Where(c => c.Type == ClaimTypes.Role)
+           .Select(c => c.Value)
+           .ToList();
 
+                if (userRoles.Contains("doctor") || userRoles.Contains("admin"))
+                {
+                    return BadRequest("Doctors and administrators cannot be patients. Please use a patient account.");
+                }
 
                 var invitationCode = await _context.InvitationCodes
                     .Include(ic => ic.InviterUser)
