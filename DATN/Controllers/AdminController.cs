@@ -127,30 +127,19 @@ namespace DATN.Controllers
                 
                 var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
                 var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "user");
-
                 if (adminRole == null)
                     return NotFound("Admin role not found in the system.");
-
                 var hasAdminRole = await _context.UserRoles
                     .AnyAsync(ur => ur.UserId == model.UserId && ur.RoleId == adminRole.RoleId && ur.IsActive);
-
                 if (hasAdminRole)
                     return BadRequest("The user already has the admin role.");
 
-                
-                if (userRole != null)
-                {
-                    var userRoleAssignment = await _context.UserRoles
-                        .FirstOrDefaultAsync(ur => ur.UserId == model.UserId && ur.RoleId == userRole.RoleId && ur.IsActive);
+                var existingRoles = await _context.UserRoles
+                            .Where(ur => ur.UserId == model.UserId && ur.IsActive)
+                            .ToListAsync();
+                _context.UserRoles.RemoveRange(existingRoles);
+                await _context.SaveChangesAsync();
 
-                    if (userRoleAssignment != null)
-                    {
-                        //userRoleAssignment.IsActive = false;
-                        _context.UserRoles.Remove(userRoleAssignment);
-                    }
-                }
-
-               
                 _context.UserRoles.Add(new UserRole
                 {
                     UserId = model.UserId,
@@ -161,6 +150,55 @@ namespace DATN.Controllers
 
                 await _context.SaveChangesAsync();
                 return Ok($"The admin role has been assigned to user {model.UserId} and user role has been removed.");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+        [HttpPost("remove-admin/{userId}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> RemoveAdminFromUser(int userId)
+        {
+            try
+            {
+                var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(currentUserIdStr, out int currentUserId) && userId == currentUserId)
+                {
+                    return BadRequest("You cannot remove your own admin privileges.");
+                }
+
+
+                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
+                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "user");
+
+                if (adminRole == null)
+                    return NotFound("Admin role not found in the system.");
+                if (userRole == null)
+                    return NotFound("User role not found in the system.");
+
+                var hasAdminRole = await _context.UserRoles
+                        .AnyAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.RoleId && ur.IsActive);
+                if (!hasAdminRole)
+                    return NotFound($"User {userId} does not have admin role to remove.");
+
+                var existingRoles = await _context.UserRoles
+                        .Where(ur => ur.UserId == userId && ur.IsActive)
+                        .ToListAsync();
+                _context.UserRoles.RemoveRange(existingRoles);
+                await _context.SaveChangesAsync();
+
+                    _context.UserRoles.Add(new UserRole
+                    {
+                        UserId = userId,
+                        RoleId = userRole.RoleId,
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
+                    });
+                
+
+                await _context.SaveChangesAsync();
+                return Ok($"Admin role has been removed from user {userId} and user role has been assigned as default.");
             }
             catch (Exception ex)
             {
@@ -183,21 +221,17 @@ namespace DATN.Controllers
                 if (doctorRole == null || userRole == null)
                     return NotFound(new { message = "The role 'doctor' or 'user' does not exist." });
 
-                var hasDoctor = await _context.UserRoles.AnyAsync(ur => ur.UserId == userId && ur.RoleId == doctorRole.RoleId && ur.IsActive);
+                var hasDoctor = await _context.UserRoles
+                    .AnyAsync(ur => ur.UserId == userId && ur.RoleId == doctorRole.RoleId && ur.IsActive);
                 if (hasDoctor)
                     return BadRequest(new { message = $"User {userId} already has the 'doctor' role." });
 
-                
-                var userRoleEntity = await _context.UserRoles
-                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
-                if (userRoleEntity != null)
-                {
-                    //userRoleEntity.IsActive = false;
-                    _context.UserRoles.Remove(userRoleEntity);
-                    //await _context.SaveChangesAsync();
-                }
-
-                
+                var existingRoles = await _context.UserRoles
+                         .Where(ur => ur.UserId == userId && ur.IsActive)
+                         .ToListAsync();
+                _context.UserRoles.RemoveRange(existingRoles);
+                await _context.SaveChangesAsync();
+              
                 _context.UserRoles.Add(new UserRole
                 {
                     UserId = userId,
@@ -226,20 +260,17 @@ namespace DATN.Controllers
                 if (doctorRole == null || userRole == null)
                     return NotFound(new { message = "Role 'doctor' or 'user' does not exitst." });
 
-                var doctorRoleEntity = await _context.UserRoles
-                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == doctorRole.RoleId && ur.IsActive);
-                if (doctorRoleEntity == null)
-                    return NotFound(new { message = $"'Doctor' role does not exist on User {userId}." });
+                var hasDoctor = await _context.UserRoles
+           .AnyAsync(ur => ur.UserId == userId && ur.RoleId == doctorRole.RoleId && ur.IsActive);
+                if (!hasDoctor)
+                    return NotFound(new { message = $"User {userId} does not have 'doctor' role to remove." });
 
-                
-                //doctorRoleEntity.IsActive = false;
-                _context.UserRoles.Remove(doctorRoleEntity); // del thủ công
+                var existingRole = await _context.UserRoles
+                    .Where(ur => ur.UserId == userId && ur.IsActive)
+                    .ToListAsync();
+                _context.UserRoles.RemoveRange(existingRole);
+                await _context.SaveChangesAsync();
 
-              
-                var hasUserRole = await _context.UserRoles
-                    .AnyAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
-                if (!hasUserRole)
-                {
                     _context.UserRoles.Add(new UserRole
                     {
                         UserId = userId,
@@ -247,7 +278,7 @@ namespace DATN.Controllers
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     });
-                }
+                
 
                 await _context.SaveChangesAsync();
                 return Ok(new { message = $" 'doctor' Role has been deleted." });
@@ -556,62 +587,7 @@ namespace DATN.Controllers
                 return StatusCode(500, $"An error occurred: {ex.Message}");
             }
         }
-        [HttpPost("remove-admin/{userId}")]
-        [Authorize(Roles = "admin")]
-        public async Task<IActionResult> RemoveAdminFromUser(int userId)
-        {
-            try
-            {
-                var currentUserIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-                if (int.TryParse(currentUserIdStr, out int currentUserId) && userId == currentUserId)
-                {
-                    return BadRequest("You cannot remove your own admin privileges.");
-                }
-
-                
-                var adminRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "admin");
-                var userRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName.ToLower() == "user");
-
-                if (adminRole == null)
-                    return NotFound("Admin role not found in the system.");
-                if (userRole == null)
-                    return NotFound("User role not found in the system.");
-
-                
-                var adminRoleAssignment = await _context.UserRoles
-                    .FirstOrDefaultAsync(ur => ur.UserId == userId && ur.RoleId == adminRole.RoleId && ur.IsActive);
-
-                if (adminRoleAssignment == null)
-                    return NotFound("The user does not have an admin role.");
-
-                
-                //adminRoleAssignment.IsActive = false;
-                _context.UserRoles.Remove(adminRoleAssignment);
-
-
-                var hasUserRole = await _context.UserRoles
-                    .AnyAsync(ur => ur.UserId == userId && ur.RoleId == userRole.RoleId && ur.IsActive);
-
-                
-                if (!hasUserRole)
-                {
-                    _context.UserRoles.Add(new UserRole
-                    {
-                        UserId = userId,
-                        RoleId = userRole.RoleId,
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-                return Ok($"Admin role has been removed from user {userId} and user role has been assigned as default.");
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"An error occurred: {ex.Message}");
-            }
-        }
+        
         [HttpGet("doctor-patients/{doctorId}")]
         [Authorize(Roles = "admin")]
         //http://localhost:5062/api/admin/doctor-patients/123
