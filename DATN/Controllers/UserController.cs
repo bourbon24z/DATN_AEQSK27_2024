@@ -644,9 +644,9 @@ namespace DATN.Controllers
                     return BadRequest("Invalid user identifier");
                 }
                 var userRoles = User.Claims
-           .Where(c => c.Type == ClaimTypes.Role)
-           .Select(c => c.Value)
-           .ToList();
+                   .Where(c => c.Type == ClaimTypes.Role)
+                   .Select(c => c.Value)
+                   .ToList();
 
                 if (userRoles.Contains("doctor") || userRoles.Contains("admin"))
                 {

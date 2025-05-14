@@ -58,6 +58,7 @@ namespace DATN.Controllers
               
                 var highRiskPatients = await _context.ClinicalIndicators
                     .Where(ci =>
+                         ci.IsActived &&
                         (ci.DauDau ? 1 : 0) +
                         (ci.TeMatChi ? 1 : 0) +
                         (ci.ChongMat ? 1 : 0) +
@@ -68,6 +69,8 @@ namespace DATN.Controllers
                         (ci.MatThangCan ? 1 : 0) +
                         (ci.BuonNon ? 1 : 0) +
                         (ci.KhoNuot ? 1 : 0) >= 7)
+                    .Select(ci => ci.UserID)
+                    .Distinct()
                     .CountAsync();
 
                 

@@ -27,30 +27,30 @@ namespace DATN.Controllers
         {
             try
             {
-                // Kiểm tra xem người dùng hiện tại có quyền tạo mã mời không
+               
                 var currentUserIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (!int.TryParse(currentUserIdString, out int currentUserId) || currentUserId != userId)
                 {
                     return BadRequest("You can only create invitation codes for yourself.");
                 }
 
-                // Kiểm tra xem người dùng có tồn tại không
+               
                 var userExists = await _dbContext.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
                 if (userExists == null)
                 {
                     return NotFound("User does not exist.");
                 }
 
-                // Tạo mã mời ngẫu nhiên 6 ký tự
+               
                 string code = GenerateRandomCode(6);
 
-                // Kiểm tra xem người dùng đã có mã mời chưa
+               
                 var inviterExists = await _dbContext.InvitationCodes
                     .FirstOrDefaultAsync(u => u.InviterUserId == userExists.UserId && u.Status == "active");
 
                 if (inviterExists == null)
                 {
-                    // Tạo mã mời mới
+                    
                     var invitationCode = new InvitationCode
                     {
                         Code = code,
@@ -64,7 +64,7 @@ namespace DATN.Controllers
                 }
                 else
                 {
-                    // Cập nhật mã mời hiện có
+                    
                     inviterExists.Code = code;
                     inviterExists.CreatedAt = DateTime.UtcNow;
                     inviterExists.ExpiresAt = DateTime.UtcNow.AddDays(7);

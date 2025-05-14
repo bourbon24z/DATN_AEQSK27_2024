@@ -25,10 +25,12 @@ namespace DATN.Controllers
 			{
 				return BadRequest("Invalid data.");
 			}
-			var clinicalIndicatorExists = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == clinicalIndicatorDTO.UserID);
-			if (clinicalIndicatorExists != null)
+			var clinicalIndicatorExists = await _context.ClinicalIndicators
+				.Where(x => x.UserID == clinicalIndicatorDTO.UserID && x.IsActived == true)
+				.ToListAsync();
+			if (clinicalIndicatorExists.Any())
 			{
-				_context.ClinicalIndicators.Remove(clinicalIndicatorExists);
+				_context.ClinicalIndicators.RemoveRange(clinicalIndicatorExists);
 			}
 			var clinicalIndicator = new ClinicalIndicator()
 			{
@@ -59,12 +61,14 @@ namespace DATN.Controllers
 			{
 				return BadRequest("Invalid data.");
 			}
-			var molecularIndicatorExists = await _context.MolecularIndicators.FirstOrDefaultAsync(x => x.UserID == molecularIndicatorDTO.UserID);
-			if (molecularIndicatorExists != null)
-			{
-				_context.MolecularIndicators.Remove(molecularIndicatorExists);
-			}
-			var molecularIndicator = new MolecularIndicator()
+            var molecularIndicatorExists = await _context.MolecularIndicators
+					.Where(x => x.UserID == molecularIndicatorDTO.UserID && x.IsActived == true)
+					.ToListAsync();
+            if (molecularIndicatorExists.Any())
+            {
+                _context.MolecularIndicators.RemoveRange(molecularIndicatorExists);
+            }
+            var molecularIndicator = new MolecularIndicator()
 			{
 				UserID = molecularIndicatorDTO.UserID,
 				IsActived = true,
@@ -95,12 +99,14 @@ namespace DATN.Controllers
 			{
 				return BadRequest("Invalid data.");
 			}
-			var subclinicalIndicatorExists = await _context.SubclinicalIndicators.FirstOrDefaultAsync(x => x.UserID == subclinicalIndicatorDTO.UserID);
-			if (subclinicalIndicatorExists != null)
-			{
-				_context.SubclinicalIndicators.Remove(subclinicalIndicatorExists);
-			}
-			var subclinicalIndicator = new SubclinicalIndicator()
+            var subclinicalIndicatorExists = await _context.SubclinicalIndicators
+					.Where(x => x.UserID == subclinicalIndicatorDTO.UserID && x.IsActived == true)
+					.ToListAsync();
+            if (subclinicalIndicatorExists.Any())
+            {
+                _context.SubclinicalIndicators.RemoveRange(subclinicalIndicatorExists);
+            }
+            var subclinicalIndicator = new SubclinicalIndicator()
 			{
 				UserID = subclinicalIndicatorDTO.UserID,
 				IsActived = true,

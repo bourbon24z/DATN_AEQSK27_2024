@@ -40,22 +40,21 @@ namespace DATN.Services
             return Task.CompletedTask;
         }
 
-        public async Task SendWebNotificationAsync(int userId, string title, string message, string type = "warning")
+        public async Task SendWebNotificationAsync(int userId, string title, string message, string type = "warning", bool saveWarning = true)
         {
             try
             {
                 if (_hubContext == null)
                 {
                     Console.WriteLine($"[NotificationService] ERROR: _hubContext is null");
-                   
-                    return; 
+                    return;
                 }
 
                 var notification = new
                 {
                     id = Guid.NewGuid().ToString(),
-                    title = title ?? "Notification", 
-                    message = message ?? "No content", 
+                    title = title ?? "Notification",
+                    message = message ?? "No content",
                     type = (type ?? "warning").ToLower(),
                     timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 };
@@ -64,7 +63,6 @@ namespace DATN.Services
 
                 try
                 {
-                   
                     await _hubContext.Clients.Group(userId.ToString())
                         .SendAsync("ReceiveNotification", notification);
                     Console.WriteLine($"[NotificationService] Notification sent successfully to group {userId}");
@@ -72,61 +70,67 @@ namespace DATN.Services
                 catch (Exception ex)
                 {
                     Console.WriteLine($"[NotificationService] ERROR sending SignalR notification: {ex.Message}");
-                   
                 }
 
-                try
+               
+                if (saveWarning)
                 {
-                    Console.WriteLine($"[NotificationService] Verifying user exists with ID {userId}");
-                    var userExists = await _dbContext.StrokeUsers.AnyAsync(u => u.UserId == userId);
-
-                    if (!userExists)
+                    try
                     {
-                        Console.WriteLine($"[NotificationService] WARNING: User with ID {userId} does not exist");
-                        return;
+                        Console.WriteLine($"[NotificationService] Verifying user exists with ID {userId}");
+                        var userExists = await _dbContext.StrokeUsers.AnyAsync(u => u.UserId == userId);
+
+                        if (!userExists)
+                        {
+                            Console.WriteLine($"[NotificationService] WARNING: User with ID {userId} does not exist");
+                            return;
+                        }
+
+                        Console.WriteLine($"[NotificationService] Creating new Warning entity for user {userId}");
+
+                        var warningRecord = new Warning
+                        {
+                            UserId = userId,
+                            Description = $"{title}\n{message}",
+                            CreatedAt = DateTime.UtcNow,
+                            IsActive = true
+                        };
+
+                        Console.WriteLine($"[NotificationService] Adding Warning to context");
+                        _dbContext.Warnings.Add(warningRecord);
+
+                        Console.WriteLine($"[NotificationService] Entity state: {_dbContext.Entry(warningRecord).State}");
+
+                        Console.WriteLine($"[NotificationService] Calling SaveChangesAsync()");
+                        var result = await _dbContext.SaveChangesAsync();
+
+                        Console.WriteLine($"[NotificationService] SaveChanges result: {result} row(s) affected");
+                        Console.WriteLine($"[NotificationService] Warning ID after save: {warningRecord.WarningId}");
                     }
-
-                    Console.WriteLine($"[NotificationService] Creating new Warning entity for user {userId}");
-
-                    var warningRecord = new Warning
+                    catch (DbUpdateException dbEx)
                     {
-                        UserId = userId,
-                        Description = $"{title}\n{message}",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    };
+                        Console.WriteLine($"[NotificationService] DATABASE ERROR: {dbEx.Message}");
+                        Console.WriteLine($"[NotificationService] Exception type: {dbEx.GetType().FullName}");
 
-                    Console.WriteLine($"[NotificationService] Adding Warning to context");
-                    _dbContext.Warnings.Add(warningRecord);
+                        if (dbEx.InnerException != null)
+                        {
+                            Console.WriteLine($"[NotificationService] Inner exception: {dbEx.InnerException.Message}");
+                        }
 
-                    Console.WriteLine($"[NotificationService] Entity state: {_dbContext.Entry(warningRecord).State}");
-
-                    Console.WriteLine($"[NotificationService] Calling SaveChangesAsync()");
-                    var result = await _dbContext.SaveChangesAsync();
-
-                    Console.WriteLine($"[NotificationService] SaveChanges result: {result} row(s) affected");
-                    Console.WriteLine($"[NotificationService] Warning ID after save: {warningRecord.WarningId}");
-                }
-                catch (DbUpdateException dbEx)
-                {
-                    Console.WriteLine($"[NotificationService] DATABASE ERROR: {dbEx.Message}");
-                    Console.WriteLine($"[NotificationService] Exception type: {dbEx.GetType().FullName}");
-
-                    if (dbEx.InnerException != null)
-                    {
-                        Console.WriteLine($"[NotificationService] Inner exception: {dbEx.InnerException.Message}");
+                        throw;
                     }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[NotificationService] DATABASE ERROR: {ex.Message}");
+                        Console.WriteLine($"[NotificationService] Exception type: {ex.GetType().FullName}");
+                        Console.WriteLine($"[NotificationService] Stack trace: {ex.StackTrace}");
 
-                    throw;
+                        throw;
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine($"[NotificationService] DATABASE ERROR: {ex.Message}");
-                    Console.WriteLine($"[NotificationService] Exception type: {ex.GetType().FullName}");
-                    Console.WriteLine($"[NotificationService] Stack trace: {ex.StackTrace}");
-
-                   
-                    throw;
+                    Console.WriteLine($"[NotificationService] Skipping warning creation (saveWarning=false)");
                 }
             }
             catch (Exception ex)
