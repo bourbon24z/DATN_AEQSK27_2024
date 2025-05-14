@@ -2,11 +2,13 @@
 using DATN.Dto;
 using DATN.Models;
 using DATN.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace DATN.Controllers
@@ -35,12 +37,27 @@ namespace DATN.Controllers
         }
 
         [HttpPost("device-reading")]
+        [Authorize]
         public async Task<IActionResult> ProcessDeviceReading([FromBody] DeviceDataDto deviceData)
         {
             if (deviceData == null)
                 return BadRequest("Dữ liệu không hợp lệ.");
             if (deviceData.Measurements == null)
                 return BadRequest("Dữ liệu đo lường là bắt buộc.");
+
+            var tokenUserIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!int.TryParse(tokenUserIdStr, out int tokenUserId))
+            {
+                return BadRequest("Invalid user token");
+            }
+            deviceData.UserId = tokenUserId;
+            
+            if (deviceData.UserId != tokenUserId)
+            {
+                
+                return StatusCode(403, new { message = "You can only submit data for your own account" });
+
+            }
             var strokeUser = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == deviceData.UserId);
             if (strokeUser == null)
                 return NotFound("Không tìm thấy người dùng.");
@@ -196,7 +213,8 @@ namespace DATN.Controllers
                     deviceData.UserId,
                     classification == "WARNING" ? "Cảnh Báo Nghiêm Trọng" : "Cảnh Báo",
                     formattedDescription,
-                    classification.ToLower()
+                    classification.ToLower(),
+                    false
                 );
                 Console.WriteLine($"[WarningController] Đã gửi thông báo web cho người dùng ID {deviceData.UserId}");
 
@@ -279,7 +297,303 @@ namespace DATN.Controllers
             });
         }
 
-        
+        // 1. get all warning
+        [HttpGet]
+        [Authorize(Roles = "admin,doctor")]
+        //http://localhost:5062/api/Warning
+        public async Task<IActionResult> GetWarnings(
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] bool? isActive = null)
+        {
+            try
+            {
+                var query = _context.Warnings.AsQueryable();
+
+               
+                if (startDate.HasValue)
+                    query = query.Where(w => w.CreatedAt >= startDate.Value);
+
+                if (endDate.HasValue)
+                    query = query.Where(w => w.CreatedAt <= endDate.Value);
+
+                if (isActive.HasValue)
+                    query = query.Where(w => w.IsActive == isActive.Value);
+
+              
+                var warnings = await query
+                    .OrderByDescending(w => w.CreatedAt)
+                    .Include(w => w.StrokeUser) 
+                    .Select(w => new
+                    {
+                        w.WarningId, 
+                        w.UserId,
+                        PatientName = w.StrokeUser.PatientName, 
+                        w.Description,
+                        w.CreatedAt,
+                        FormattedTimestamp = w.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss"),
+                        w.IsActive
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    TotalCount = warnings.Count,
+                    Warnings = warnings
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+        // get by id
+        [HttpGet("user/{userId}")]
+        [Authorize(Roles = "admin,doctor")]
+        //http://localhost:5062/api/Warning/user/{userId}
+        public async Task<IActionResult> GetUserWarnings(
+            int userId,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] bool? isActive = null)
+        {
+            try
+            {
+                
+                if (User.IsInRole("doctor"))
+                {
+                    var doctorIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (!int.TryParse(doctorIdStr, out int doctorId))
+                    {
+                        return BadRequest("Invalid doctor identifier");
+                    }
+
+                    var hasRelationship = await _context.Relationships
+                        .AnyAsync(r => r.InviterId == doctorId &&
+                                      r.UserId == userId &&
+                                      r.RelationshipType == "doctor-patient");
+
+                    if (!hasRelationship)
+                    {
+                        return Forbid("You do not have access to this patient's warnings");
+                    }
+                }
+
+                var query = _context.Warnings
+                    .Where(w => w.UserId == userId);
+
+               
+                if (startDate.HasValue)
+                    query = query.Where(w => w.CreatedAt >= startDate.Value);
+
+                if (endDate.HasValue)
+                    query = query.Where(w => w.CreatedAt <= endDate.Value);
+
+                if (isActive.HasValue)
+                    query = query.Where(w => w.IsActive == isActive.Value);
+
+                
+                var warnings = await query
+                    .OrderByDescending(w => w.CreatedAt)
+                    .Select(w => new
+                    {
+                        w.WarningId,
+                        w.UserId,
+                        w.Description,
+                        w.CreatedAt,
+                        w.IsActive,
+                        FormattedTimestamp = w.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
+                    })
+                    .ToListAsync();
+
+                var user = await _context.StrokeUsers.FindAsync(userId);
+
+                return Ok(new
+                {
+                    Patient = new
+                    {
+                        UserId = userId,
+                        PatientName = user != null ? user.PatientName : "Unknown"
+                    },
+                    TotalCount = warnings.Count,
+                    Warnings = warnings
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        //get warning for user
+        [HttpGet("my-warnings")]
+        [Authorize(Roles = "user")]
+        //http://localhost:5062/api/Warning/my-warnings
+        public async Task<IActionResult> GetMyWarnings(
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+                var query = _context.Warnings
+                    .Where(w => w.UserId == userId && w.IsActive);
+
+                
+                if (startDate.HasValue)
+                    query = query.Where(w => w.CreatedAt >= startDate.Value);
+
+                if (endDate.HasValue)
+                    query = query.Where(w => w.CreatedAt <= endDate.Value);
+
+               
+                var warnings = await query
+                    .OrderByDescending(w => w.CreatedAt)
+                    .Select(w => new
+                    {
+                        w.WarningId,
+                        w.Description,
+                        w.CreatedAt,
+                        FormattedTimestamp = w.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
+                    })
+                    .ToListAsync();
+
+                return Ok(new
+                {
+                    TotalCount = warnings.Count,
+                    Warnings = warnings
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        // get detail warning
+        [HttpGet("{id}")]
+        [Authorize(Roles = "admin,doctor,user")]
+        //http://localhost:5062/api/Warning/{id}
+        public async Task<IActionResult> GetWarningById(int id)
+        {
+            try
+            {
+                var warning = await _context.Warnings
+                    .Include(w => w.StrokeUser) 
+                    .FirstOrDefaultAsync(w => w.WarningId == id);
+
+                if (warning == null)
+                    return NotFound("Warning not found");
+
+                
+                if (User.IsInRole("user"))
+                {
+                    var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (!int.TryParse(userIdStr, out int userId) || warning.UserId != userId)
+                    {
+                        return StatusCode(403, new { message = "You do not have access to this warning" });
+                    }
+                }
+                else if (User.IsInRole("doctor"))
+                {
+                    var doctorIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (!int.TryParse(doctorIdStr, out int doctorId))
+                    {
+                        return BadRequest("Invalid doctor identifier");
+                    }
+
+                    var hasRelationship = await _context.Relationships
+                        .AnyAsync(r => r.InviterId == doctorId &&
+                                      r.UserId == warning.UserId &&
+                                      r.RelationshipType == "doctor-patient");
+
+                    if (!hasRelationship)
+                    {
+                        return StatusCode(403, new { message = "You do not have access to this patient's warnings" });
+                    }
+                }
+
+                return Ok(new
+                {
+                    warning.WarningId, 
+                    warning.UserId,
+                    PatientName = warning.StrokeUser?.PatientName,
+                    warning.Description,
+                    warning.CreatedAt,
+                    FormattedTimestamp = warning.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss"),
+                    warning.IsActive
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+       // del warning
+        [HttpDelete("{id}")]
+        [Authorize (Roles= "admin")]
+        //http://localhost:5062/api/Warning/{id}
+        public async Task<IActionResult> DeleteWarning(int id)
+        {
+            try
+            {
+                var warning = await _context.Warnings.FindAsync(id);
+                if (warning == null)
+                    return NotFound("Warning not found");
+
+                _context.Warnings.Remove(warning);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    Message = "Warning has been permanently deleted",
+                    WarningId = id
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+
+        // del hàng loạt
+        [HttpDelete("batch")]
+        [Authorize(Roles = "admin")]
+        //http://localhost:5062/api/Warning/batch
+        public async Task<IActionResult> BatchDeleteWarnings([FromBody] List<int> warningIds)
+        {
+            try
+            {
+                if (warningIds == null || !warningIds.Any())
+                    return BadRequest("Warning IDs are required");
+
+                var warnings = await _context.Warnings
+                    .Where(w => warningIds.Contains(w.WarningId))
+                    .ToListAsync();
+
+                if (!warnings.Any())
+                    return NotFound("No warnings found with the provided IDs");
+
+                _context.Warnings.RemoveRange(warnings);
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    Message = $"{warnings.Count} warnings have been permanently deleted",
+                    DeletedWarningIds = warnings.Select(w => w.WarningId)
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
         private string GetMobileNotificationTitle(string classification)
         {
             return classification switch
