@@ -129,7 +129,7 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("get-indicator/{userId}")]
-        [Authorize(Roles = "admin,doctor")]
+        // [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> GetIndicator(int userId)
 		{
 			var clinicalIndicator = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == userId&& x.IsActived==true);
@@ -147,7 +147,7 @@ namespace DATN.Controllers
 			});
 		}
 		[HttpGet("get-percent-indicator-is-true")]
-        [Authorize(Roles = "admin,doctor")]
+        // [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> GetPercentIndicatorIsTrue(int userId)
 		{
 			var clinicalIndicator = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == userId && x.IsActived == true);

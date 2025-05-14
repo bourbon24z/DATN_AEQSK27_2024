@@ -22,7 +22,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("medicaldata")]
-        [Authorize(Roles = "admin,doctor")]
+                [Authorize]
+
         public async Task<IActionResult> AddMedicalData([FromBody]MedicalDataDTO medicalData)
 		{
 			var device = await _context.Device.FirstOrDefaultAsync(d => d.Series == medicalData.Series);
@@ -50,7 +51,8 @@ namespace DATN.Controllers
 
 
 		[HttpGet("daily/{date}/{deviceId}")]
-        [Authorize(Roles = "admin,doctor")]
+                [Authorize]
+
         public async Task<IActionResult> GetDataByDate(DateTime date,int deviceId)
 		{
 			if (date == null || deviceId == null)
@@ -64,7 +66,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("average-last-14-days/{deviceId}")]
-        [Authorize(Roles = "admin,doctor")]
+                [Authorize]
+
         public async Task<IActionResult> GetAverageLast14Days(int deviceId)
 		{
 			var currentDate = DateTime.UtcNow.Date;
@@ -98,7 +101,8 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("daily-nightly-all/{date}/{deviceId}")]
-        [Authorize(Roles = "admin,doctor")]
+       [Authorize]
+
         public async Task<IActionResult> GetDailyNightlyAllData(DateTime date, int deviceId)
 		{
 			// Lấy dữ liệu cả ngày (từ 0h đến 23h59)
@@ -134,7 +138,7 @@ namespace DATN.Controllers
 
 
 		[HttpGet("average-daily-night-last-14-days/{deviceId}")]
-        [Authorize(Roles = "admin,doctor")]
+        // [Authorize]
         public async Task<IActionResult> GetDailyNightAverageLast14Days(int deviceId)
 		{
 			var currentDate = DateTime.UtcNow.Date;
