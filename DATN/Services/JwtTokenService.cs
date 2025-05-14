@@ -37,7 +37,7 @@ namespace DATN.Services
                 issuer: _jwtSettings.Issuer,
                 audience: _jwtSettings.Audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddHours(1),
+                expires: DateTime.Now.AddHours(24),
                 signingCredentials: creds
             );
 
