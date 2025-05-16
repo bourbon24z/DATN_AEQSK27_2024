@@ -10,14 +10,16 @@ namespace DATN.Services
             int patientId,
             string title,
             string message,
-            string type = "warning");
+            string type = "warning",
+            bool saveWarning =false);
 
      
         Task SendNotificationToPatientFamilyAsync(
             int patientId,
             string title,
             string message,
-            string type = "warning");
+            string type = "warning",
+            bool saveWarning = false);
 
         
         Task SendNotificationToPatientCircleAsync(

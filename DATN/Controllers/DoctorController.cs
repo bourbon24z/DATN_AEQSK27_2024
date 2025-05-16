@@ -13,7 +13,7 @@ namespace DATN.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "doctor")]
+    [Authorize(Roles = "doctor, admin")]
     public class DoctorController : ControllerBase
     {
         private readonly StrokeDbContext _context;
@@ -25,21 +25,18 @@ namespace DATN.Controllers
             _indicatorsController = new IndicatorsController(context);
         }
 
-        
+
         [HttpGet("dashboard")]
         public async Task<IActionResult> GetDoctorDashboard()
         {
             try
             {
-                
                 var totalPatients = await _context.StrokeUsers
                     .Where(u => _context.UserRoles
                         .Any(ur => ur.UserId == u.UserId && ur.Role.RoleName == "user" && ur.IsActive))
                     .CountAsync();
-
-                
+               
                 var totalCaseHistories = await _context.CaseHistories.CountAsync();
-
                 
                 var recentCaseHistories = await _context.CaseHistories
                     .Include(c => c.StrokeUser)
@@ -55,28 +52,127 @@ namespace DATN.Controllers
                     })
                     .ToListAsync();
 
-              
-                var highRiskPatients = await _context.ClinicalIndicators
-                    .Where(ci =>
-                         ci.IsActived &&
-                        (ci.DauDau ? 1 : 0) +
-                        (ci.TeMatChi ? 1 : 0) +
-                        (ci.ChongMat ? 1 : 0) +
-                        (ci.KhoNoi ? 1 : 0) +
-                        (ci.MatTriNhoTamThoi ? 1 : 0) +
-                        (ci.LuLan ? 1 : 0) +
-                        (ci.GiamThiLuc ? 1 : 0) +
-                        (ci.MatThangCan ? 1 : 0) +
-                        (ci.BuonNon ? 1 : 0) +
-                        (ci.KhoNuot ? 1 : 0) >= 7)
-                    .Select(ci => ci.UserID)
-                    .Distinct()
-                    .CountAsync();
-
-                
+               
                 var newEvaluations = await _context.DoctorEvaluations
                     .Where(e => e.EvaluationDate >= DateTime.Now.AddDays(-7))
                     .CountAsync();
+
+                
+                var patientUserIds = await _context.UserRoles
+                    .Where(ur => ur.Role.RoleName == "user" && ur.IsActive)
+                    .Select(ur => ur.UserId)
+                    .Distinct() 
+                    .ToListAsync();
+
+               
+                var activeClinicalIndicators = await _context.ClinicalIndicators
+                    .Where(ci => ci.IsActived && patientUserIds.Contains(ci.UserID))
+                    .GroupBy(ci => ci.UserID)
+                    .Select(g => g.OrderByDescending(ci => ci.RecordedAt).FirstOrDefault())
+                    .ToListAsync();
+
+                var activeMolecularIndicators = await _context.MolecularIndicators
+                    .Where(mi => mi.IsActived && patientUserIds.Contains(mi.UserID))
+                    .GroupBy(mi => mi.UserID)
+                    .Select(g => g.OrderByDescending(mi => mi.RecordedAt).FirstOrDefault())
+                    .ToListAsync();
+
+                var activeSubclinicalIndicators = await _context.SubclinicalIndicators
+                    .Where(si => si.IsActived && patientUserIds.Contains(si.UserID))
+                    .GroupBy(si => si.UserID)
+                    .Select(g => g.OrderByDescending(si => si.RecordedAt).FirstOrDefault())
+                    .ToListAsync();
+
+                
+                var highRiskUserIds = new HashSet<int>();
+
+               
+                foreach (var userId in patientUserIds)
+                {
+                    var clinical = activeClinicalIndicators.FirstOrDefault(c => c.UserID == userId);
+                    var molecular = activeMolecularIndicators.FirstOrDefault(m => m.UserID == userId);
+                    var subclinical = activeSubclinicalIndicators.FirstOrDefault(s => s.UserID == userId);
+
+                    int percent1 = 0, percent2 = 0, percent3 = 0;
+                    int totalCount1 = 0, totalCount2 = 0, totalCount3 = 0;
+                    int trueCount1 = 0, trueCount2 = 0, trueCount3 = 0;
+
+                    if (clinical != null)
+                    {
+                        totalCount1 = 10;
+                        if (clinical.DauDau) trueCount1++;
+                        if (clinical.TeMatChi) trueCount1++;
+                        if (clinical.ChongMat) trueCount1++;
+                        if (clinical.KhoNoi) trueCount1++;
+                        if (clinical.MatTriNhoTamThoi) trueCount1++;
+                        if (clinical.LuLan) trueCount1++;
+                        if (clinical.GiamThiLuc) trueCount1++;
+                        if (clinical.MatThangCan) trueCount1++;
+                        if (clinical.BuonNon) trueCount1++;
+                        if (clinical.KhoNuot) trueCount1++;
+                    }
+
+                    if (molecular != null)
+                    {
+                        totalCount2 = 10;
+                        if (molecular.MiR_30e_5p) trueCount2++;
+                        if (molecular.MiR_16_5p) trueCount2++;
+                        if (molecular.MiR_140_3p) trueCount2++;
+                        if (molecular.MiR_320d) trueCount2++;
+                        if (molecular.MiR_320p) trueCount2++;
+                        if (molecular.MiR_20a_5p) trueCount2++;
+                        if (molecular.MiR_26b_5p) trueCount2++;
+                        if (molecular.MiR_19b_5p) trueCount2++;
+                        if (molecular.MiR_874_5p) trueCount2++;
+                        if (molecular.MiR_451a) trueCount2++;
+                    }
+
+                    if (subclinical != null)
+                    {
+                        totalCount3 = 10;
+                        if (subclinical.S100B) trueCount3++;
+                        if (subclinical.MMP9) trueCount3++;
+                        if (subclinical.GFAP) trueCount3++;
+                        if (subclinical.RBP4) trueCount3++;
+                        if (subclinical.NT_proBNP) trueCount3++;
+                        if (subclinical.sRAGE) trueCount3++;
+                        if (subclinical.D_dimer) trueCount3++;
+                        if (subclinical.Lipids) trueCount3++;
+                        if (subclinical.Protein) trueCount3++;
+                        if (subclinical.VonWillebrand) trueCount3++;
+                    }
+
+                   
+                    if (totalCount1 > 0 && molecular == null && subclinical == null)
+                    {
+                        percent1 = (trueCount1 * 70) / totalCount1;
+                    }
+                    else
+                    {
+                        if (totalCount1 != 0)
+                        {
+                            percent1 = (trueCount1 * 30) / totalCount1;
+                        }
+                        if (totalCount2 != 0)
+                        {
+                            percent2 = (trueCount2 * 30) / totalCount2;
+                        }
+                        if (totalCount3 != 0)
+                        {
+                            percent3 = (trueCount3 * 30) / totalCount3;
+                        }
+                    }
+
+                    int totalPercent = percent1 + percent2 + percent3;
+
+                   
+                    if (totalPercent >= 70)
+                    {
+                        highRiskUserIds.Add(userId);
+                    }
+                }
+
+                var highRiskPatients = highRiskUserIds.Count;
 
                 return Ok(new
                 {
@@ -298,7 +394,7 @@ namespace DATN.Controllers
                         {
                             Latitude = patientGps.Lat,
                             Longitude = patientGps.Lon,
-                            LastUpdated = patientGps.CreatedAt
+                            LastUpdated = patientGps.CreatedAt 
                         } : null,
                         Devices = devices,
                         MedicalDataSummary = recentMedicalData,
@@ -537,6 +633,7 @@ namespace DATN.Controllers
             }
         }
         [HttpGet("my-patients")]
+        [Authorize (Roles = "admin, doctor")]
         //http://localhost:5062/api/doctor/my-patients
         public async Task<IActionResult> GetMyPatients([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
         {

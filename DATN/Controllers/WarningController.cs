@@ -1,9 +1,11 @@
 ﻿using DATN.Data;
 using DATN.Dto;
+using DATN.Hubs;
 using DATN.Models;
 using DATN.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -23,17 +25,20 @@ namespace DATN.Controllers
         private readonly IMobileNotificationService _mobileNotificationService;
         private readonly IHealthNotificationService _healthNotificationService;
         private readonly IPatientNotificationService _patientNotificationService;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
         public WarningController(StrokeDbContext context, INotificationService notificationService, 
                                                           INotificationFormatterService notificationFormatter, 
                                                           IMobileNotificationService mobileNotificationService, 
-                                                          IPatientNotificationService patientNotificationService)
+                                                          IPatientNotificationService patientNotificationService,
+                                                          IHubContext<NotificationHub> hubContext)
         {
                                 _context = context;
                                 _notificationService = notificationService;
                                 _notificationFormatter = notificationFormatter;
                                 _mobileNotificationService = mobileNotificationService;
                                 _patientNotificationService = patientNotificationService;
+                                _hubContext = hubContext;
         }
 
         [HttpPost("device-reading")]
@@ -204,17 +209,17 @@ namespace DATN.Controllers
             {
                 Console.WriteLine($"[WarningController] Đã phát hiện tình trạng {classification} cho người dùng ID {deviceData.UserId}");
 
-                // send mail notification
+                
                 await _notificationService.SendNotificationAsync(strokeUser.Email, "Cảnh báo", formattedDescription);
                 Console.WriteLine($"[WarningController] Đã gửi thông báo email cho {strokeUser.Email}");
 
-                // send web notification
+              
                 await _notificationService.SendWebNotificationAsync(
                     deviceData.UserId,
                     classification == "WARNING" ? "Cảnh Báo Nghiêm Trọng" : "Cảnh Báo",
                     formattedDescription,
                     classification.ToLower(),
-                    false
+                    true 
                 );
                 Console.WriteLine($"[WarningController] Đã gửi thông báo web cho người dùng ID {deviceData.UserId}");
 
@@ -264,16 +269,6 @@ namespace DATN.Controllers
                     }
                 }
 
-               
-                Warning warningRecord = new Warning
-                {
-                    UserId = deviceData.UserId,
-                    Description = formattedDescription,
-                    CreatedAt = DateTime.UtcNow,
-                    IsActive = true
-                };
-                _context.Warnings.Add(warningRecord);
-
                 if (hasGps)
                 {
                     var gpsRecord = new Gps
@@ -310,7 +305,24 @@ namespace DATN.Controllers
             {
                 var query = _context.Warnings.AsQueryable();
 
-               
+                if (User.IsInRole("doctor") && !User.IsInRole("admin"))
+                {
+                    var doctorIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    if (!int.TryParse(doctorIdStr, out int doctorId))
+                    {
+                        return BadRequest("Invalid doctor identifier");
+                    }
+
+                    var patientIds = await _context.Relationships
+                        .Where(r => r.InviterId == doctorId &&
+                                   r.RelationshipType == "doctor-patient")
+                        .Select(r => r.UserId)
+                        .ToListAsync();
+
+
+                    query = query.Where(w => patientIds.Contains(w.UserId));
+                }
+
                 if (startDate.HasValue)
                     query = query.Where(w => w.CreatedAt >= startDate.Value);
 
@@ -320,21 +332,21 @@ namespace DATN.Controllers
                 if (isActive.HasValue)
                     query = query.Where(w => w.IsActive == isActive.Value);
 
-              
+
                 var warnings = await query
-                    .OrderByDescending(w => w.CreatedAt)
-                    .Include(w => w.StrokeUser) 
-                    .Select(w => new
-                    {
-                        w.WarningId, 
-                        w.UserId,
-                        PatientName = w.StrokeUser.PatientName, 
-                        w.Description,
-                        w.CreatedAt,
-                        FormattedTimestamp = w.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss"),
-                        w.IsActive
-                    })
-                    .ToListAsync();
+                   .OrderByDescending(w => w.CreatedAt)
+                   .Include(w => w.StrokeUser)
+                   .Select(w => new
+           {
+                   w.WarningId,
+                   w.UserId,
+                   PatientName = w.StrokeUser.PatientName,
+                   w.Description,
+                   w.CreatedAt,
+                   FormattedTimestamp = w.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss"),
+                   w.IsActive
+           })
+                .ToListAsync();
 
                 return Ok(new
                 {
@@ -592,6 +604,115 @@ namespace DATN.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
+        
+        [HttpGet("test-recipients/{patientId}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> TestNotificationRecipients(int patientId)
+        {
+            try
+            {
+                
+                var patient = await _context.StrokeUsers.FindAsync(patientId);
+                if (patient == null)
+                    return NotFound($"Không tìm thấy bệnh nhân ID {patientId}");
+
+                
+                var doctors = await _context.Relationships
+                    .Where(r => r.UserId == patientId && r.RelationshipType == "doctor-patient")
+                    .Join(_context.StrokeUsers,
+                        rel => rel.InviterId,
+                        user => user.UserId,
+                        (rel, user) => new { UserId = user.UserId, Name = user.PatientName })
+                    .ToListAsync();
+
+                
+                var familyRelationships = await _context.Relationships
+                    .Where(r => (r.UserId == patientId || r.InviterId == patientId) &&
+                               r.RelationshipType == "family")
+                    .ToListAsync();
+
+                var familyIds = new List<int>();
+                foreach (var rel in familyRelationships)
+                {
+                    if (rel.UserId == patientId)
+                        familyIds.Add(rel.InviterId);
+                    else
+                        familyIds.Add(rel.UserId);
+                }
+
+                var familyMembers = await _context.StrokeUsers
+                    .Where(u => familyIds.Contains(u.UserId))
+                    .Select(u => new { UserId = u.UserId, Name = u.PatientName })
+                    .ToListAsync();
+
+                
+                var connections = _hubContext.Clients.Group(patientId.ToString()).ToString();
+
+                return Ok(new
+                {
+                    Patient = new { patientId, Name = patient.PatientName },
+                    Doctors = doctors,
+                    FamilyMembers = familyMembers,
+                    TotalRecipients = doctors.Count + familyMembers.Count + 1, 
+                    OnlineStatus = !string.IsNullOrEmpty(connections) ? "Some recipients are online" : "No recipients currently online"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Lỗi khi kiểm tra người nhận thông báo: {ex.Message}");
+            }
+        }
+        [HttpPost("test-send/{patientId}")]
+        [Authorize(Roles = "admin")]
+        public async Task<IActionResult> TestSendNotification(int patientId)
+        {
+            try
+            {
+                var patient = await _context.StrokeUsers.FindAsync(patientId);
+                if (patient == null)
+                    return NotFound($"Không tìm thấy bệnh nhân ID {patientId}");
+
+                
+                var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                var title = $"Test Notification ({timestamp})";
+                var message = $"This is a test notification sent at {timestamp}. If you see this, you are configured to receive alerts for patient {patient.PatientName} (ID: {patientId}).";
+
+                
+                Console.WriteLine($"==== SENDING TEST NOTIFICATION FOR PATIENT {patientId} ====");
+
+               
+                await _notificationService.SendWebNotificationAsync(
+                    patientId,
+                    title,
+                    message,
+                    "test",
+                    true 
+                );
+
+                
+                await _patientNotificationService.SendNotificationToPatientCircleAsync(
+                    patientId,
+                    title,
+                    message,
+                    "test"
+                );
+
+               
+                await Task.Delay(500);
+
+                return Ok(new
+                {
+                    Status = "Test notification sent",
+                    Timestamp = timestamp,
+                    Patient = new { patientId, Name = patient.PatientName },
+                    Message = "Check logs and notifications to see who received it"
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error sending test notification: {ex.Message}");
             }
         }
         private string GetMobileNotificationTitle(string classification)
