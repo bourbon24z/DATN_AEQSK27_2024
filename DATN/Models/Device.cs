@@ -11,9 +11,11 @@ namespace DATN.Models
 		    public string DeviceName { get; set; }
             public string DeviceType { get; set; }
             public string Series { get; set; }
+            public bool IsLocked { get; set; } = false;
+            public DateTime CreatedAt { get; set; }
+            public DateTime? UpdatedAt { get; set; }
 
         public ICollection<UserMedicalData> UserMedicalDatas { get; set; } = new List<UserMedicalData>();
-        [JsonIgnore]
 		public StrokeUser User { get; set; }
 	}
 }

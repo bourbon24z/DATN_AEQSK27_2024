@@ -171,9 +171,12 @@ namespace DATN.Data
 				entity.Property(d => d.DeviceName).HasColumnName("device_name");
 				entity.Property(d => d.DeviceType).HasColumnName("device_type");
 				entity.Property(d => d.Series).HasColumnName("series").HasMaxLength(50);
+                entity.Property(d => d.IsLocked).HasColumnName("IsLocked").HasDefaultValue(false);
+                entity.Property(d => d.CreatedAt).HasColumnName("CreatedAt").HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(d => d.UpdatedAt).HasColumnName("UpdatedAt");
 
-				// Thêm khóa ngoại StrokeUserUserId
-				entity.Property(d => d.UserId).HasColumnName("stroke_user_user_id");
+
+                entity.Property(d => d.UserId).HasColumnName("stroke_user_user_id");
 
 				entity.HasOne(d => d.User)
 					  .WithMany(u => u.Devices)
@@ -287,6 +290,36 @@ namespace DATN.Data
             {
                 var connectionString = "server=localhost;port=3306;database=demo_db_stroke;user=root;password=";
                 optionsBuilder.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 21)));
+            }
+        }
+        public override int SaveChanges()
+        {
+            AddTimestamps();
+            return base.SaveChanges();
+        }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            AddTimestamps();
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+
+        private void AddTimestamps()
+        {
+            var now = DateTime.Now;
+
+            foreach (var entry in ChangeTracker.Entries()
+                .Where(e => e.Entity is Device && (e.State == EntityState.Added || e.State == EntityState.Modified)))
+            {
+                if (entry.Entity is Device device)
+                {
+                    if (entry.State == EntityState.Added)
+                    {
+                        device.CreatedAt = now;
+                    }
+
+                    device.UpdatedAt = now;
+                }
             }
         }
     }
