@@ -28,10 +28,11 @@ namespace DATN.Services
         }
 
         public async Task SendNotificationToPatientDoctorsAsync(
-     int patientId,
-     string title,
-     string message,
-     string type = "warning")
+             int patientId,
+             string title,
+             string message,
+             string type = "warning",
+             bool saveWarning = false)
         {
             try
             {
@@ -56,18 +57,19 @@ namespace DATN.Services
 
                 _logger.LogInformation($"Gửi thông báo đến {doctorIds.Count} bác sĩ của bệnh nhân ID {patientId}");
 
-                
+
                 foreach (var doctorId in doctorIds)
                 {
                     try
                     {
-                        await _notificationService.SendWebNotificationAsync(doctorId, title, message, type);
+                        await _notificationService.SendWebNotificationAsync(
+                            doctorId, title, message, type, saveWarning);
+
                         _logger.LogInformation($"Đã gửi thông báo web thành công đến bác sĩ ID {doctorId}");
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, $"Lỗi khi gửi thông báo web đến bác sĩ ID {doctorId}");
-                        
                     }
                 }
             }
@@ -81,7 +83,8 @@ namespace DATN.Services
             int patientId,
             string title,
             string message,
-            string type = "warning")
+            string type = "warning",
+            bool saveWarning = true)
         {
             try
             {
@@ -113,7 +116,7 @@ namespace DATN.Services
 
                
                 var webTasks = familyIds.Select(familyId =>
-                    _notificationService.SendWebNotificationAsync(familyId, title, message, type));
+                    _notificationService.SendWebNotificationAsync(familyId, title, message, type, saveWarning));
 
                 
                 var mobileTasks = familyIds.Select(familyId =>
@@ -138,10 +141,35 @@ namespace DATN.Services
         {
             try
             {
+                var doctorIds = await _dbContext.Relationships
+            .Where(r => r.UserId == patientId && r.RelationshipType == "doctor-patient")
+            .Select(r => r.InviterId)
+            .ToListAsync();
+
+                var familyRelationships = await _dbContext.Relationships
+                    .Where(r => (r.UserId == patientId || r.InviterId == patientId) &&
+                               r.RelationshipType == "family")
+                    .ToListAsync();
+
+                var familyIds = new List<int>();
+                foreach (var relationship in familyRelationships)
+                {
+                    if (relationship.UserId == patientId)
+                        familyIds.Add(relationship.InviterId);
+                    else
+                        familyIds.Add(relationship.UserId);
+                }
+
                 
+                _logger.LogInformation($"====== NOTIFICATION RECIPIENTS FOR PATIENT {patientId} ======");
+                _logger.LogInformation($"DOCTORS ({doctorIds.Count}): {string.Join(", ", doctorIds)}");
+                _logger.LogInformation($"FAMILY MEMBERS ({familyIds.Count}): {string.Join(", ", familyIds)}");
+                _logger.LogInformation($"======================================================");
+
+
                 await Task.WhenAll(
-                    SendNotificationToPatientDoctorsAsync(patientId, title, message, type),
-                    SendNotificationToPatientFamilyAsync(patientId, title, message, type)
+                    SendNotificationToPatientDoctorsAsync(patientId, title, message, type, saveWarning: false),
+                    SendNotificationToPatientFamilyAsync(patientId, title, message, type, saveWarning: false)
                 );
 
                 _logger.LogInformation($"Đã gửi thông báo thành công đến bác sĩ và gia đình của bệnh nhân ID {patientId}");

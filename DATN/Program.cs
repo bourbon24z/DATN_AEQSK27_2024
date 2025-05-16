@@ -219,7 +219,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAccessLog();
 
-app.UseCors("AllowFrontend3000");
+app.UseCors("AllowAll");
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
