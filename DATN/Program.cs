@@ -216,9 +216,8 @@ if (app.Environment.IsDevelopment())
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "API v1");
     });
 }
-
+app.UseStaticFiles();
 app.UseAccessLog();
-
 app.UseCors("AllowAll");
 app.UseRouting();
 app.UseAuthentication();
@@ -272,9 +271,7 @@ if (app.Environment.IsDevelopment())
 //}
 
 app.MapControllers();
-app.UseCors("AllowAll");
-app.UseRouting();
 app.MapHub<NotificationHub>("/notificationHub");
-app.UseStaticFiles();
+app.MapFallbackToFile("/emergency-location/{**slug}", "emergency-location.html");
 
 app.Run();

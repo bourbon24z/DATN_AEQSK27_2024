@@ -1,4 +1,5 @@
 ﻿using DATN.Dto;
+using DATN.Models;
 using System;
 using System.Text;
 
@@ -7,6 +8,7 @@ namespace DATN.Services
     public interface INotificationFormatterService
     {
         string FormatWarningMessage(string classification, string details, GPSDataDto location);
+        string FormatEmergencyMessage(StrokeUser user, string locationLink, string additionalInfo = null);
     }
 
     public class NotificationFormatterService : INotificationFormatterService
@@ -60,6 +62,28 @@ namespace DATN.Services
             sb.Append("</div>");
 
             return sb.ToString();
+        }
+        public string FormatEmergencyMessage(StrokeUser user, string locationLink, string additionalInfo = null)
+        {
+            string message = $"🚨 THÔNG BÁO KHẨN CẤP! 🚨\n\n" +
+                           $"Bệnh nhân {user.PatientName} vừa bấm nút khẩn cấp!\n\n" +
+                           $"Vui lòng liên hệ ngay qua số điện thoại: {user.Phone}\n";
+
+            if (!string.IsNullOrEmpty(user.Email))
+            {
+                message += $"Hoặc email: {user.Email}\n\n";
+            }
+
+            message += $"Xem vị trí hiện tại của bệnh nhân: {locationLink}";
+
+            if (!string.IsNullOrWhiteSpace(additionalInfo))
+            {
+                message += $"\n\nThông tin bổ sung: {additionalInfo}";
+            }
+
+            message += $"\n\nThời gian thông báo: {DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss")}";
+
+            return message;
         }
     }
 }
