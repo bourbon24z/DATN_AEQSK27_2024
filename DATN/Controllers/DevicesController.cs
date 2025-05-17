@@ -39,6 +39,7 @@ namespace DATN.Controllers
                     existingDevice.UpdatedAt = DateTime.Now;
 
                     await _context.SaveChangesAsync();
+
                     var responseDTO = new deviceDTO
                     {
                         DeviceId = existingDevice.DeviceId,
@@ -60,6 +61,36 @@ namespace DATN.Controllers
                 }
                 else
                 {
+                    var activeDevices = await _context.Device
+                .Where(d => d.UserId == userId && !d.IsLocked && d.Series != device.Series)
+                .ToListAsync();
+
+                    int lockedCount = 0;
+
+                    if (activeDevices.Any())
+                    {
+                        foreach (var oldDevice in activeDevices)
+                        {
+                            oldDevice.IsLocked = true;
+                            oldDevice.UpdatedAt = DateTime.UtcNow;
+                            lockedCount++;
+                        }
+                        await _context.SaveChangesAsync();
+                    }
+
+                    var existingDevices = await _context.Device
+                        .Where(d => d.UserId == userId && d.Series != device.Series)
+                        .ToListAsync();
+                    if (existingDevices.Any())
+                    {
+                        foreach (var oldDevice in existingDevices)
+                        {
+                            oldDevice.IsLocked = true;
+                            oldDevice.UpdatedAt = DateTime.UtcNow;
+                        }
+                        
+                    }
+
                     var newDevice = new Device
                     {
                         UserId = userId,
@@ -85,9 +116,12 @@ namespace DATN.Controllers
 
                     return Ok(new
                     {
-                        message = "Device added successfully",
+                        message = lockedCount > 0
+                                                ? $"Device added successfully. {lockedCount} existing active device(s) have been locked."
+                                                : "Device added successfully",
                         device = responseDTO,
-                        isNew = true
+                        isNew = true,
+                        lockedDevices = lockedCount
                     });
                 }
             }
@@ -108,6 +142,17 @@ namespace DATN.Controllers
                 }
                 var devices = await _context.Device
                 .Where(d => d.UserId == userId && !d.IsLocked)
+                .Select(d => new {
+                    d.DeviceId,
+                    d.DeviceName,
+                    d.DeviceType,
+                    d.Series,
+                    d.UserId,
+                    d.IsLocked,
+                    d.CreatedAt,
+                    d.UpdatedAt
+                }
+                    )
                 .ToListAsync();
 
                 if (devices == null || !devices.Any())
@@ -208,7 +253,7 @@ namespace DATN.Controllers
                 return StatusCode(500, new { message = $"An error occurred: {ex.Message}" });
             }
         }
-            [HttpDelete("delete-device/{deviceId}")]
+            [HttpDelete("delete-devices/{deviceId}")]
             public async Task<IActionResult> DeleteDevice(int deviceId)
             {
                 var device = await _context.Device.FindAsync(deviceId);
