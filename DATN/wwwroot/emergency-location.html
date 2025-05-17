@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vị Trí Khẩn Cấp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8f9fa; }
+        .container { max-width: 800px; margin: 0 auto; padding: 15px; }
+        .alert-header { background-color: #f44336; color: white; padding: 15px; text-align: center; }
+        .patient-info { background-color: #fff9f9; border: 1px solid #ffcdd2; padding: 15px; margin: 15px 0; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .contact-info { font-size: 1.2em; font-weight: bold; color: #d32f2f; }
+        #map { height: 400px; width: 100%; border-radius: 4px; margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .action-buttons { display: flex; justify-content: space-between; margin: 15px 0; flex-wrap: wrap; gap: 10px; }
+        .action-buttons button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; flex: 1; min-width: 120px; }
+        .btn-call { background-color: #4CAF50; color: white; }
+        .btn-mail { background-color: #2196F3; color: white; }
+        .btn-map { background-color: #673AB7; color: white; }
+        .btn-resolve { background-color: #FF9800; color: white; }
+        .timestamp { font-size: 0.9em; color: #757575; margin-top: 10px; }
+        .loading { display: flex; justify-content: center; align-items: center; height: 200px; font-weight: bold; color: #666; }
+        .error-message { background-color: #ffebee; border: 1px solid #ffcdd2; padding: 15px; margin: 15px 0; border-radius: 4px; color: #c62828; }
+        .debug-container { margin-top: 20px; padding: 15px; background-color: #f0f0f0; border-radius: 4px; }
+        .input-group { display: flex; gap: 10px; margin-top: 10px; }
+        .input-group input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .input-group button { padding: 8px 15px; background-color: #607D8B; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .help-text { font-size: 0.9em; color: #666; margin-top: 8px; }
+        @media (max-width: 600px) {
+            .action-buttons { flex-direction: column; gap: 10px; }
+            .action-buttons button { width: 100%; margin-bottom: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="alert-header">
+        <h1>🚨 CẢNH BÁO KHẨN CẤP 🚨</h1>
+    </div>
+    
+    <div class="container">
+        <div id="loading" class="loading">Đang tải thông tin khẩn cấp...</div>
+        <div id="error-container" style="display: none;" class="error-message"></div>
+        
+        <div id="debug-container" class="debug-container" style="display: none;">
+            <h3>Công Cụ Kiểm Tra</h3>
+            <p>Không tìm thấy GPS ID hợp lệ. Vui lòng nhập ID để xem thông tin khẩn cấp:</p>
+            <div class="input-group">
+                <input type="number" id="manual-gpsid" placeholder="Nhập GPS ID">
+                <button onclick="useManualId()">Kiểm Tra</button>
+            </div>
+            <p class="help-text">URL đúng phải có định dạng: /emergency-location/{id} hoặc ?id={id}</p>
+            
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                <h4>Kiểm Tra Kết Nối API</h4>
+                <button onclick="testApiConnection()" style="background-color: #546E7A; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer;">
+                    Kiểm Tra Kết Nối
+                </button>
+                <div id="api-status" style="margin-top: 10px; font-size: 0.9em;"></div>
+            </div>
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div class="patient-info">
+                <h2>Thông tin bệnh nhân</h2>
+                <p><strong>Tên:</strong> <span id="patientName"></span></p>
+                <p class="contact-info">Liên hệ ngay: <span id="phoneNumber"></span></p>
+                <p><strong>Email:</strong> <span id="email"></span></p>
+                <p class="timestamp">Thời gian báo động: <span id="recordedTime"></span></p>
+            </div>
+            
+            <h2>Vị trí hiện tại</h2>
+            <div id="map"></div>
+            
+            <div class="action-buttons">
+                <button class="btn-call" onclick="callPatient()">Gọi Ngay</button>
+                <button class="btn-mail" onclick="emailPatient()">Gửi Email</button>
+                <button class="btn-map" onclick="openInOpenStreetMap()">Xem Trong OSM</button>
+                <button class="btn-resolve" id="resolveBtn" onclick="resolveEmergency()">Đã Hỗ Trợ</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        let gpsId;
+        let warningId = 0;
+        let patientLatitude, patientLongitude;
+        const apiBaseUrl = "http://localhost:5062"; 
+        
+        
+        function getGpsIdFromUrl() {
+            
+            const pathParts = window.location.pathname.split('/');
+            if (pathParts.length >= 2) {
+                
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                    if (pathParts[i] === "emergency-location") {
+                        const potentialId = pathParts[i+1];
+                        if (potentialId && !isNaN(parseInt(potentialId))) {
+                            console.log("Found gpsId in URL path:", potentialId);
+                            return potentialId;
+                        }
+                    }
+                }
+            }
+            
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const queryId = urlParams.get('id');
+            if (queryId && !isNaN(parseInt(queryId))) {
+                console.log("Found gpsId in query param:", queryId);
+                return queryId;
+            }
+            
+            console.log("No valid gpsId found in URL");
+            return null;
+        }
+        
+        
+        async function loadEmergencyData() {
+            try {
+                
+                if (!gpsId || isNaN(parseInt(gpsId))) {
+                    throw new Error("GPS ID không hợp lệ");
+                }
+                
+                document.getElementById('loading').style.display = 'flex';
+                document.getElementById('content').style.display = 'none';
+                document.getElementById('error-container').style.display = 'none';
+                document.getElementById('debug-container').style.display = 'none';
+                
+                
+                const numericGpsId = parseInt(gpsId);
+                const apiUrl = `${apiBaseUrl}/api/EmergencyButton/location/${numericGpsId}`;
+                
+                console.log("Fetching from:", apiUrl);
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    console.log("Response status:", response.status);
+                    const responseText = await response.text();
+                    console.log("Response text:", responseText);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("Data received:", data);
+                
+               
+                document.getElementById('patientName').textContent = data.patientName;
+                document.getElementById('phoneNumber').textContent = data.phoneNumber;
+                document.getElementById('email').textContent = data.email || 'Không có';
+                document.getElementById('recordedTime').textContent = data.formattedTime;
+                
+                
+                warningId = data.warningId;
+                patientLatitude = data.latitude;
+                patientLongitude = data.longitude;
+                
+                
+                if (!warningId) {
+                    const resolveBtn = document.getElementById('resolveBtn');
+                    resolveBtn.disabled = true;
+                    resolveBtn.style.backgroundColor = '#9E9E9E';
+                    resolveBtn.title = 'Không có cảnh báo liên kết';
+                }
+                
+                
+                const map = L.map('map').setView([data.latitude, data.longitude], 15);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+                
+                
+                L.marker([data.latitude, data.longitude]).addTo(map)
+                    .bindPopup(`${data.patientName} đang ở đây!`)
+                    .openPopup();
+                
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching location data:', error);
+                document.getElementById('loading').style.display = 'none';
+                
+                const errorContainer = document.getElementById('error-container');
+                errorContainer.textContent = 'Không thể tải dữ liệu vị trí: ' + error.message;
+                errorContainer.style.display = 'block';
+                
+                
+                document.getElementById('debug-container').style.display = 'block';
+            }
+        }
+        
+        
+        function callPatient() {
+            const phoneNumber = document.getElementById('phoneNumber').textContent;
+            window.location.href = `tel:${phoneNumber}`;
+        }
+        
+        
+        function emailPatient() {
+            const email = document.getElementById('email').textContent;
+            if (email && email !== 'Không có') {
+                window.location.href = `mailto:${email}?subject=Phản hồi thông báo khẩn cấp&body=Tôi đã nhận được thông báo khẩn cấp của bạn và đang liên hệ để hỗ trợ.`;
+            } else {
+                alert('Không có địa chỉ email để liên hệ.');
+            }
+        }
+        
+       
+        function openInOpenStreetMap() {
+            if (patientLatitude && patientLongitude) {
+                const osmUrl = `https://www.openstreetmap.org/#map=16/${patientLatitude}/${patientLongitude}`;
+                window.open(osmUrl, '_blank');
+            } else {
+                alert('Không có dữ liệu tọa độ');
+            }
+        }
+        
+        
+        async function resolveEmergency() {
+            if (!warningId) {
+                alert('Không tìm thấy ID cảnh báo.');
+                return;
+            }
+            
+            if (confirm('Bạn có chắc đã hỗ trợ người dùng này?')) {
+                try {
+                    const token = localStorage.getItem('token'); 
+                    
+                    const response = await fetch(`${apiBaseUrl}/api/EmergencyButton/resolve/${warningId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        alert('Đã đánh dấu tình huống khẩn cấp là đã giải quyết.');
+                        const btnResolve = document.getElementById('resolveBtn');
+                        btnResolve.disabled = true;
+                        btnResolve.textContent = "Đã Giải Quyết";
+                        btnResolve.style.backgroundColor = "#9E9E9E";
+                    } else {
+                        if (response.status === 401) {
+                            alert('Bạn cần đăng nhập để thực hiện hành động này.');
+                        } else {
+                            alert('Không thể cập nhật trạng thái cảnh báo.');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error resolving emergency:', error);
+                    alert('Đã xảy ra lỗi. Vui lòng thử lại sau.');
+                }
+            }
+        }
+        
+        
+        function useManualId() {
+            const inputId = document.getElementById('manual-gpsid').value;
+            if (inputId && !isNaN(parseInt(inputId))) {
+                gpsId = inputId;
+                loadEmergencyData();
+            } else {
+                alert("ID không hợp lệ! Vui lòng nhập số.");
+            }
+        }
+        
+        
+        async function testApiConnection() {
+            try {
+                const statusElement = document.getElementById('api-status');
+                statusElement.textContent = "Đang kiểm tra kết nối...";
+                statusElement.style.color = "#666";
+                
+                
+                const response = await fetch(`${apiBaseUrl}/api/EmergencyButton/test`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusElement.textContent = `✓ Kết nối thành công! Server time: ${data.timestamp}`;
+                    statusElement.style.color = "green";
+                } else {
+                    statusElement.textContent = `✗ Kết nối thất bại. Status: ${response.status}`;
+                    statusElement.style.color = "red";
+                }
+            } catch (error) {
+                const statusElement = document.getElementById('api-status');
+                statusElement.textContent = `✗ Lỗi kết nối: ${error.message}`;
+                statusElement.style.color = "red";
+            }
+        }
+        
+       
+        function initialize() {
+          
+            gpsId = getGpsIdFromUrl();
+            
+           
+            if (gpsId) {
+                loadEmergencyData();
+            } else {
+               
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('debug-container').style.display = 'block';
+                document.getElementById('error-container').textContent = 'Không tìm thấy ID tọa độ trong URL.';
+                document.getElementById('error-container').style.display = 'block';
+            }
+        }
+        
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            const manualInput = document.getElementById('manual-gpsid');
+            manualInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    useManualId();
+                }
+            });
+        });
+        
+       
+        window.onload = initialize;
+    </script>
+</body>
+</html>
