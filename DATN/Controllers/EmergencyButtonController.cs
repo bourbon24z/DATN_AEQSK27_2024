@@ -19,7 +19,7 @@ namespace DATN.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    [AllowAnonymous]
+    
     public class EmergencyButtonController : ControllerBase
     {
         private readonly StrokeDbContext _context;
@@ -47,6 +47,7 @@ namespace DATN.Controllers
 
       
         [HttpPost("activate")]
+        [AllowAnonymous]
         public async Task<IActionResult> ActivateEmergency([FromBody] EmergencyRequestDto request,
             [FromHeader(Name = "X-API-Key")] string apiKey = null)
         {
