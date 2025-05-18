@@ -12,7 +12,7 @@ namespace DATN.Models
         public int AttributeId { get; set; }
 
         [Column("RecordedAt", TypeName = "datetime(6)")]
-        public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
+        public DateTime RecordedAt { get; set; } = DateTime.Now;
 
         [ForeignKey("UserId")]
         public virtual StrokeUser StrokeUser { get; set; }

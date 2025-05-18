@@ -66,7 +66,7 @@ namespace DATN.Controllers
                     Gender = model.Gender,
                     Phone = model.Phone,
                     Email = model.Email,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     IsVerified = true
                 };
 
@@ -144,7 +144,7 @@ namespace DATN.Controllers
                 {
                     UserId = model.UserId,
                     RoleId = adminRole.RoleId,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     IsActive = true
                 });
 
@@ -192,7 +192,7 @@ namespace DATN.Controllers
                     {
                         UserId = userId,
                         RoleId = userRole.RoleId,
-                        CreatedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.Now,
                         IsActive = true
                     });
                 
@@ -236,7 +236,7 @@ namespace DATN.Controllers
                 {
                     UserId = userId,
                     RoleId = doctorRole.RoleId,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     IsActive = true
                 });
                 await _context.SaveChangesAsync();
@@ -275,7 +275,7 @@ namespace DATN.Controllers
                     {
                         UserId = userId,
                         RoleId = userRole.RoleId,
-                        CreatedAt = DateTime.UtcNow,
+                        CreatedAt = DateTime.Now,
                         IsActive = true
                     });
                 

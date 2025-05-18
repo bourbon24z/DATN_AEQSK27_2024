@@ -97,7 +97,7 @@ namespace DATN.Controllers
             return Ok(new { count = warnings.Count, message = $"Đã đánh dấu {warnings.Count} thông báo đã đọc" });
         }
 
-        // Gửi thông báo test
+       
         [HttpPost("test")]
         public async Task<IActionResult> SendTestNotification([FromBody] TestNotificationModel model)
         {
@@ -112,19 +112,19 @@ namespace DATN.Controllers
                     title = model.Title ?? "Thông báo test",
                     message = model.Message,
                     type = model.Type?.ToLower() ?? "info",
-                    timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    timestamp = DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 };
 
-                // Gửi thông báo qua SignalR
+                
                 await _hubContext.Clients.Group(model.UserId.ToString())
                     .SendAsync("ReceiveNotification", notification);
 
-                // Lưu vào database
+              
                 var warning = new Warning
                 {
                     UserId = model.UserId,
                     Description = $"{model.Title ?? "Thông báo test"}\n{model.Message}",
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     IsActive = true
                 };
 

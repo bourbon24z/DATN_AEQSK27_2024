@@ -106,7 +106,7 @@ namespace DATN.Controllers
             var tempUser = await _context.UserRegistrationTemps
                 .SingleOrDefaultAsync(u => u.Email == verifyOtpDto.Email && u.Otp == verifyOtpDto.Otp);
 
-            if (tempUser == null || tempUser.OtpExpiry < DateTime.UtcNow)
+            if (tempUser == null || tempUser.OtpExpiry < DateTime.Now)
             {
                 return BadRequest("OTP invalid, please try again.");
             }
@@ -134,7 +134,7 @@ namespace DATN.Controllers
                 {
                     UserId = newUser.UserId,
                     RoleId = userRole.RoleId,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     IsActive = true
                 };
                 _context.UserRoles.Add(newUserRole);
@@ -192,7 +192,7 @@ namespace DATN.Controllers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddHours(1),
+                Expires = DateTime.Now.AddHours(1),
                 Issuer = "localhost:5062",
                 Audience = "localhost:5062",
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
@@ -273,7 +273,7 @@ namespace DATN.Controllers
                 UserId = user.UserId,
                 Email = user.Email,
                 VerificationCode = otp,
-                OtpExpiry = DateTime.UtcNow.AddMinutes(15),
+                OtpExpiry = DateTime.Now.AddMinutes(15),
                 IsVerified = false
             };
             _context.UserVerifications.Add(userVerification);
@@ -308,7 +308,7 @@ namespace DATN.Controllers
                 .OrderByDescending(v => v.OtpExpiry)
                 .FirstOrDefaultAsync();
 
-            if (verification == null || verification.OtpExpiry < DateTime.UtcNow)
+            if (verification == null || verification.OtpExpiry < DateTime.Now)
             {
                 return BadRequest("Invalid or expired OTP.");
             }
@@ -506,7 +506,7 @@ namespace DATN.Controllers
                 UserId = user.UserId,
                 Lon = userGpsDto.Long,
                 Lat = userGpsDto.Lat,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now
             };
             _context.Gps.Add(gpsData);
             await _context.SaveChangesAsync();
@@ -658,7 +658,7 @@ namespace DATN.Controllers
                     .FirstOrDefaultAsync(ic =>
                         ic.Code == model.Code &&
                         ic.Status == "active" &&
-                        ic.ExpiresAt > DateTime.UtcNow);
+                        ic.ExpiresAt > DateTime.Now);
 
                 if (invitationCode == null)
                 {
@@ -695,7 +695,7 @@ namespace DATN.Controllers
                     UserId = userId,
                     InviterId = invitationCode.InviterUserId,
                     RelationshipType = "doctor-patient",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
 
                 _context.Relationships.Add(relationship);
@@ -830,7 +830,7 @@ namespace DATN.Controllers
 
                 return Ok(new
                 {
-                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     PersonalInfo = new
                     {
                         UserId = user.UserId,
@@ -873,9 +873,9 @@ namespace DATN.Controllers
 
                 
                 if (!startDate.HasValue)
-                    startDate = DateTime.UtcNow.AddMonths(-1);
+                    startDate = DateTime.Now.AddMonths(-1);
                 if (!endDate.HasValue)
-                    endDate = DateTime.UtcNow;
+                    endDate = DateTime.Now;
 
                 
                 var deviceIds = await _context.Device
@@ -999,7 +999,7 @@ namespace DATN.Controllers
 
                 return Ok(new
                 {
-                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     Statistics = stats,
                     Records = records
                 });
@@ -1029,9 +1029,9 @@ namespace DATN.Controllers
 
                
                 if (!startDate.HasValue)
-                    startDate = DateTime.UtcNow.AddMonths(-1);
+                    startDate = DateTime.Now.AddMonths(-1);
                 if (!endDate.HasValue)
-                    endDate = DateTime.UtcNow;
+                    endDate = DateTime.Now;
 
                
                 metricType = metricType.ToLower();
@@ -1103,7 +1103,7 @@ namespace DATN.Controllers
                 {
                     return Ok(new
                     {
-                        CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                        CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                         MetricType = metricType,
                         DateRange = new { From = startDate.Value.ToString("yyyy-MM-dd"), To = endDate.Value.ToString("yyyy-MM-dd") },
                         GroupedBy = groupBy,
@@ -1168,7 +1168,7 @@ namespace DATN.Controllers
 
                 return Ok(new
                 {
-                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     MetricType = metricType,
                     DateRange = new
                     {
@@ -1220,7 +1220,7 @@ namespace DATN.Controllers
                 {
                     return Ok(new
                     {
-                        CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                        CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                         Message = "No devices found for this user",
                         Devices = new List<object>()
                     });
@@ -1228,7 +1228,7 @@ namespace DATN.Controllers
 
                 return Ok(new
                 {
-                    CurrentTime = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
+                    CurrentTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
                     TotalDevices = devices.Count,
                     Devices = devices
                 });

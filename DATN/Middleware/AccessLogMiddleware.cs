@@ -36,7 +36,7 @@ namespace DATN.Middleware
                     method,
                     path,
                     query,
-                    DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")
+                    DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
                 );
             }
 

@@ -243,7 +243,7 @@ namespace DATN.Controllers
                         var additionalData = new Dictionary<string, string>
                         {
                             { "fullDescription", formattedDescription },
-                            { "timestamp", DateTime.UtcNow.ToString("o") }
+                            { "timestamp", DateTime.Now.ToString("o") }
                         };
 
                        
@@ -276,7 +276,7 @@ namespace DATN.Controllers
                         UserId = deviceData.UserId,
                         Lat = deviceData.GPS.Lat,
                         Lon = deviceData.GPS.Long,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.Now
                     };
                     _context.Gps.Add(gpsRecord);
                     Console.WriteLine($"[WarningController] Đã lưu dữ liệu GPS. Vĩ độ: {deviceData.GPS.Lat}, Kinh độ: {deviceData.GPS.Long}");
@@ -675,7 +675,7 @@ namespace DATN.Controllers
                     return NotFound($"Không tìm thấy bệnh nhân ID {patientId}");
 
                 
-                var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
                 var title = $"Test Notification ({timestamp})";
                 var message = $"This is a test notification sent at {timestamp}. If you see this, you are configured to receive alerts for patient {patient.PatientName} (ID: {patientId}).";
 

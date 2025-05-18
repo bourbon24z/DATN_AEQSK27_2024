@@ -22,7 +22,7 @@ namespace DATN.Hubs
 
                    
                     await Clients.Client(Context.ConnectionId).SendAsync("ConnectionConfirmed",
-                        new { userId = userId, connectionId = Context.ConnectionId, timestamp = DateTime.UtcNow });
+                        new { userId = userId, connectionId = Context.ConnectionId, timestamp = DateTime.Now });
                 }
                 else
                 {
