@@ -19,7 +19,7 @@ namespace DATN.Services
             {
                 _logger.LogInformation("Cleaning up expired temporary registrations");
                 var expiredUsers = _context.UserRegistrationTemps
-                    .Where(u => u.OtpExpiry < DateTime.UtcNow).ToList();
+                    .Where(u => u.OtpExpiry < DateTime.Now).ToList();
                 if (expiredUsers.Any())
                 {
                     _context.UserRegistrationTemps.RemoveRange(expiredUsers);

@@ -23,7 +23,7 @@ public class NotificationTestController : ControllerBase
         var additionalData = new Dictionary<string, string>
         {
             { "testId", Guid.NewGuid().ToString() },
-            { "sentAt", DateTime.UtcNow.ToString("o") }
+            { "sentAt", DateTime.Now.ToString("o") }
         };
 
         bool result = await _mobileNotificationService.SendNotificationToUserAsync(

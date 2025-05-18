@@ -81,7 +81,7 @@ namespace DATN.Services
                 message += $"\n\nThông tin bổ sung: {additionalInfo}";
             }
 
-            message += $"\n\nThời gian thông báo: {DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss")}";
+            message += $"\n\nThời gian thông báo: {DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")}";
 
             return message;
         }

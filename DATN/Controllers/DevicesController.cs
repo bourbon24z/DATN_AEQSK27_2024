@@ -72,7 +72,7 @@ namespace DATN.Controllers
                         foreach (var oldDevice in activeDevices)
                         {
                             oldDevice.IsLocked = true;
-                            oldDevice.UpdatedAt = DateTime.UtcNow;
+                            oldDevice.UpdatedAt = DateTime.Now;
                             lockedCount++;
                         }
                         await _context.SaveChangesAsync();
@@ -86,7 +86,7 @@ namespace DATN.Controllers
                         foreach (var oldDevice in existingDevices)
                         {
                             oldDevice.IsLocked = true;
-                            oldDevice.UpdatedAt = DateTime.UtcNow;
+                            oldDevice.UpdatedAt = DateTime.Now;
                         }
                         
                     }
@@ -98,7 +98,7 @@ namespace DATN.Controllers
                         DeviceType = device.DeviceType,
                         Series = device.Series,
                         IsLocked = false,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.Now
                     };
                     _context.Device.Add(newDevice);
                     await _context.SaveChangesAsync();
@@ -180,7 +180,7 @@ namespace DATN.Controllers
                 }
 
                 device.IsLocked = true;
-                device.UpdatedAt = DateTime.UtcNow;
+                device.UpdatedAt = DateTime.Now;
 
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Device locked successfully" });
@@ -204,7 +204,7 @@ namespace DATN.Controllers
 
 
                 device.IsLocked = false;
-                device.UpdatedAt = DateTime.UtcNow;
+                device.UpdatedAt = DateTime.Now;
 
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Device unlocked successfully" });

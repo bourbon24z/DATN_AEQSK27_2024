@@ -729,8 +729,8 @@ namespace DATN.Controllers
                 {
                    
                     existingCode.Code = code;
-                    existingCode.CreatedAt = DateTime.UtcNow;
-                    existingCode.ExpiresAt = DateTime.UtcNow.AddDays(7);
+                    existingCode.CreatedAt = DateTime.Now;
+                    existingCode.ExpiresAt = DateTime.Now.AddDays(7);
                     _context.InvitationCodes.Update(existingCode);
                 }
                 else
@@ -741,8 +741,8 @@ namespace DATN.Controllers
                         Code = code,
                         InviterUserId = doctorId,
                         Status = "active",
-                        CreatedAt = DateTime.UtcNow,
-                        ExpiresAt = DateTime.UtcNow.AddDays(7) 
+                        CreatedAt = DateTime.Now,
+                        ExpiresAt = DateTime.Now.AddDays(7) 
                     };
 
                     _context.InvitationCodes.Add(invitationCode);
@@ -754,7 +754,7 @@ namespace DATN.Controllers
                 {
                     Message = "Invitation code generated successfully",
                     Code = code,
-                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                    ExpiresAt = DateTime.Now.AddDays(7)
                 });
             }
             catch (Exception ex)

@@ -56,7 +56,7 @@ namespace DATN.Services
                     title = title ?? "Notification",
                     message = message ?? "No content",
                     type = (type ?? "warning").ToLower(),
-                    timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    timestamp = DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
                 };
 
                 Console.WriteLine($"[NotificationService] Sending notification to userId {userId}");
@@ -92,7 +92,7 @@ namespace DATN.Services
                         {
                             UserId = userId,
                             Description = $"{title}\n{message}",
-                            CreatedAt = DateTime.UtcNow,
+                            CreatedAt = DateTime.Now,
                             IsActive = true
                         };
 

@@ -56,8 +56,8 @@ namespace DATN.Controllers
                         Code = code,
                         InviterUserId = userExists.UserId,
                         Status = "active",
-                        CreatedAt = DateTime.UtcNow,
-                        ExpiresAt = DateTime.UtcNow.AddDays(7) // Hết hạn sau 7 ngày
+                        CreatedAt = DateTime.Now,
+                        ExpiresAt = DateTime.Now.AddDays(7) // Hết hạn sau 7 ngày
                     };
 
                     _dbContext.InvitationCodes.Add(invitationCode);
@@ -66,8 +66,8 @@ namespace DATN.Controllers
                 {
                     
                     inviterExists.Code = code;
-                    inviterExists.CreatedAt = DateTime.UtcNow;
-                    inviterExists.ExpiresAt = DateTime.UtcNow.AddDays(7);
+                    inviterExists.CreatedAt = DateTime.Now;
+                    inviterExists.ExpiresAt = DateTime.Now.AddDays(7);
                     _dbContext.InvitationCodes.Update(inviterExists);
                 }
 
@@ -77,7 +77,7 @@ namespace DATN.Controllers
                 {
                     message = "Invitation code created successfully",
                     code,
-                    expiresAt = DateTime.UtcNow.AddDays(7)
+                    expiresAt = DateTime.Now.AddDays(7)
                 });
             }
             catch (Exception ex)
@@ -111,7 +111,7 @@ namespace DATN.Controllers
                     .Include(i => i.InviterUser)
                     .FirstOrDefaultAsync(i => i.Code == useInvitationDto.Code && i.Status == "active");
 
-                if (invitationCode == null || invitationCode.ExpiresAt < DateTime.UtcNow)
+                if (invitationCode == null || invitationCode.ExpiresAt < DateTime.Now)
                 {
                     return BadRequest("Invalid or expired invitation code.");
                 }
@@ -164,7 +164,7 @@ namespace DATN.Controllers
                     UserId = user.UserId,
                     InviterId = inviter.UserId,
                     RelationshipType = relationshipType,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
 
                 

@@ -40,7 +40,7 @@ namespace DATN.Controllers
 				RecordedAt = medicalData.RecordedAt,
 				Spo2Information = medicalData.Spo2Information,
 				HeartRate = medicalData.HeartRate,
-				CreatedAt = DateTime.UtcNow
+				CreatedAt = DateTime.Now
 			};
 			_context.UserMedicalDatas.Add(userMedicalData);
 			await _context.SaveChangesAsync();
@@ -67,7 +67,7 @@ namespace DATN.Controllers
         [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> GetAverageLast14Days(int deviceId)
 		{
-			var currentDate = DateTime.UtcNow.Date;
+			var currentDate = DateTime.Now.Date;
 			var startDate = currentDate.AddDays(-13);
 
 			var data = await _context.UserMedicalDatas
@@ -137,7 +137,7 @@ namespace DATN.Controllers
         [Authorize(Roles = "admin,doctor")]
         public async Task<IActionResult> GetDailyNightAverageLast14Days(int deviceId)
 		{
-			var currentDate = DateTime.UtcNow.Date;
+			var currentDate = DateTime.Now.Date;
 			var startDate = currentDate.AddDays(-13);
 
 			// Lấy dữ liệu trong 14 ngày

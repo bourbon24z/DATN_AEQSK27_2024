@@ -19,6 +19,7 @@ namespace DATN.Controllers
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
+    [AllowAnonymous]
     public class EmergencyButtonController : ControllerBase
     {
         private readonly StrokeDbContext _context;
@@ -46,34 +47,69 @@ namespace DATN.Controllers
 
       
         [HttpPost("activate")]
-        public async Task<IActionResult> ActivateEmergency([FromBody] EmergencyRequestDto request)
+        public async Task<IActionResult> ActivateEmergency([FromBody] EmergencyRequestDto request,
+            [FromHeader(Name = "X-API-Key")] string apiKey = null)
         {
             try
             {
-                // Lấy userId từ token
-                var tokenUserIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                if (!int.TryParse(tokenUserIdStr, out int tokenUserId))
+                int userId;
+                bool isPhysicalDevice = false;
+
+                if (User.Identity.IsAuthenticated)
                 {
-                    return BadRequest("Invalid user token");
-                }
+                    var tokenUserIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-               
-                if (request.UserId.HasValue && request.UserId.Value != tokenUserId)
+                    if (!int.TryParse(tokenUserIdStr, out int tokenUserId))
+                    {
+                        return BadRequest("Invalid user token");
+                    }
+
+
+                    if (request.UserId.HasValue && request.UserId.Value != tokenUserId)
+                    {
+                        return StatusCode(403, new { message = "You can only activate emergency for your own account" });
+                    }
+
+                    userId = request.UserId ?? tokenUserId;
+
+                }
+                else if (!string.IsNullOrEmpty(apiKey))
                 {
-                    return StatusCode(403, new { message = "You can only activate emergency for your own account" });
+
+                    if (apiKey != "DATNAEQSK27")
+                    {
+                        return Unauthorized("Invalid API Key");
+                    }
+
+                    if (!request.UserId.HasValue)
+                    {
+                        return BadRequest("User ID is required when using API Key authentication");
+                    }
+
+                    userId = request.UserId.Value;
+                    isPhysicalDevice = true;
                 }
+                else
+                {
 
-                
-                int userId = request.UserId ?? tokenUserId;
-
-                
+                    return Unauthorized("Authentication required");
+                }
                 var strokeUser = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
                 if (strokeUser == null)
                 {
                     return NotFound("User not found");
                 }
 
-                _logger.LogInformation($"Emergency button activated by user {userId} ({strokeUser.PatientName}) at {DateTime.UtcNow}");
+                _logger.LogInformation($"Emergency button activated by user {userId} ({strokeUser.PatientName}) at {DateTime.Now} - Source: {(isPhysicalDevice ? "Physical Device" : "App")}");
+
+                if (isPhysicalDevice && !string.IsNullOrEmpty(request.AdditionalInfo))
+                {
+                    request.AdditionalInfo = "[Nút khẩn cấp vật lý] " + request.AdditionalInfo;
+                }
+                else if (isPhysicalDevice)
+                {
+                    request.AdditionalInfo = "[Kích hoạt từ nút khẩn cấp vật lý]";
+                }
 
                 
                 var gps = new Gps
@@ -92,7 +128,7 @@ namespace DATN.Controllers
 
                 string formattedDescription = $"🚨 THÔNG BÁO KHẨN CẤP! 🚨\n\n" +
                     $"Bệnh nhân {strokeUser.PatientName} vừa bấm nút khẩn cấp!\n\n" +
-                    $"Vui lòng liên hệ ngay qua số điện thoại: {strokeUser.Phone}\n";
+                    $"Vui lòng liên hệ ngay 115, các cơ quan y tế gần nhất hoặc qua SỐ ĐIỆN THOẠI CỦA BỆNH NHÂN: {strokeUser.Phone}\n";
 
                 if (!string.IsNullOrEmpty(strokeUser.Email))
                 {
@@ -105,10 +141,10 @@ namespace DATN.Controllers
 
                 if (!string.IsNullOrWhiteSpace(request.AdditionalInfo))
                 {
-                    formattedDescription += $"\nThông tin bổ sung: {request.AdditionalInfo}";
+                    formattedDescription += $"\nNội dung: {request.AdditionalInfo}";
                 }
 
-                formattedDescription += $"\n\nThời gian thông báo: {DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss")}";
+                formattedDescription += $"\n\nThời gian thông báo: {DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")}";
 
                
                 var warning = new Warning
@@ -155,7 +191,7 @@ namespace DATN.Controllers
                     { "gpsId", gps.GpsId.ToString() },
                     { "latitude", request.Latitude.ToString() },
                     { "longitude", request.Longitude.ToString() },
-                    { "timestamp", DateTime.UtcNow.ToString("o") },
+                    { "timestamp", DateTime.Now.ToString("o") },
                     { "locationLink", locationLink },
                     { "openStreetMapLink", openStreetMapLink }
                 };
@@ -381,7 +417,7 @@ namespace DATN.Controllers
                     UserId = patientId,
                     Lat = request.Latitude,
                     Lon = request.Longitude,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.Now
                 };
                 _context.Gps.Add(gps);
                 await _context.SaveChangesAsync();
@@ -404,14 +440,14 @@ namespace DATN.Controllers
                     $"- OpenStreetMap: {openStreetMapLink}\n";
 
                 testDescription += $"\nThông tin bổ sung: Đây là thông báo TEST";
-                testDescription += $"\n\nThời gian thông báo: {DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm:ss")}";
+                testDescription += $"\n\nThời gian thông báo: {DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")}";
 
                
                 var warning = new Warning
                 {
                     UserId = patientId,
                     Description = testDescription,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.Now,
                     IsActive = true
                 };
                 _context.Warnings.Add(warning);
@@ -451,7 +487,7 @@ namespace DATN.Controllers
                     { "gpsId", gps.GpsId.ToString() },
                     { "latitude", request.Latitude.ToString() },
                     { "longitude", request.Longitude.ToString() },
-                    { "timestamp", DateTime.UtcNow.ToString("o") },
+                    { "timestamp", DateTime.Now.ToString("o") },
                     { "locationLink", locationLink },
                     { "openStreetMapLink", openStreetMapLink },
                     { "type", "test" }

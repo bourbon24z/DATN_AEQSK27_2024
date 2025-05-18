@@ -125,7 +125,7 @@ namespace DATN.Services
                 title = title,
                 message = message,
                 type = type.ToLower(),
-                timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                timestamp = DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
             };
 
             

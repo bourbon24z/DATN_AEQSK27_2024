@@ -31,7 +31,7 @@ public class OtpController : ControllerBase
             UserId = userId,
             Email = email,
             VerificationCode = otp,
-            OtpExpiry = DateTime.UtcNow.AddMinutes(15), 
+            OtpExpiry = DateTime.Now.AddMinutes(15), 
             IsVerified = false 
         };
         _context.UserVerifications.Add(userVerification);
@@ -63,7 +63,7 @@ public class OtpController : ControllerBase
             UserId = dbUser.UserId,
             Email = dbUser.Email,
             VerificationCode = otp,
-            OtpExpiry = DateTime.UtcNow.AddMinutes(15), 
+            OtpExpiry = DateTime.Now.AddMinutes(15), 
             IsVerified = false
         };
         _context.UserVerifications.Add(userVerification);
@@ -100,7 +100,7 @@ public class OtpController : ControllerBase
             .OrderByDescending(v => v.OtpExpiry)
             .FirstOrDefaultAsync();
 
-        if (verification == null || verification.OtpExpiry < DateTime.UtcNow)
+        if (verification == null || verification.OtpExpiry < DateTime.Now)
         {
             return BadRequest("Invalid or expired OTP.");
         }
