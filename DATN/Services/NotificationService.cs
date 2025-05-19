@@ -56,7 +56,10 @@ namespace DATN.Services
                     title = title ?? "Notification",
                     message = message ?? "No content",
                     type = (type ?? "warning").ToLower(),
-                    timestamp = DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
+                    timestamp = DateTime.Now.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+                    persistence = true,
+                    priority = type == "warning" ? "high" : "medium",
+                    requiresAction = true
                 };
 
                 Console.WriteLine($"[NotificationService] Sending notification to userId {userId}");
