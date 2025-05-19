@@ -664,6 +664,55 @@ namespace DATN.Controllers
                 return StatusCode(500, $"Lỗi khi kiểm tra người nhận thông báo: {ex.Message}");
             }
         }
+        [HttpGet("user-notifications")]
+        [Authorize]
+        public async Task<IActionResult> GetUserNotifications([FromQuery] DateTime? since = null)
+        {
+            try
+            {
+                var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (!int.TryParse(userIdStr, out int userId))
+                {
+                    return BadRequest("Invalid user identifier");
+                }
+
+                // Lấy các cảnh báo từ khoảng thời gian
+                var query = _context.Warnings
+                    .Where(w => w.UserId == userId && w.IsActive);
+
+                if (since.HasValue)
+                {
+                    query = query.Where(w => w.CreatedAt >= since.Value);
+                }
+                else
+                {
+                    // Mặc định lấy 7 ngày
+                    query = query.Where(w => w.CreatedAt >= DateTime.Now.AddDays(-7));
+                }
+
+                var warnings = await query
+                    .OrderByDescending(w => w.CreatedAt)
+                    .Select(w => new
+                    {
+                        id = w.WarningId.ToString(),
+                        title = GetTitleFromDescription(w.Description),
+                        message = w.Description,
+                        type = w.Description.Contains("NGUY HIỂM") ? "warning" :
+                               w.Description.Contains("CẢNH BÁO") ? "risk" : "normal",
+                        timestamp = w.CreatedAt.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+                        persistence = true,
+                        requiresAction = true,
+                        isRead = false 
+                    })
+                    .ToListAsync();
+
+                return Ok(warnings);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"An error occurred: {ex.Message}");
+            }
+        }
         [HttpPost("test-send/{patientId}")]
         [Authorize(Roles = "admin")]
         public async Task<IActionResult> TestSendNotification(int patientId)
@@ -736,32 +785,40 @@ namespace DATN.Controllers
 
             string content;
 
-            
-            if (details.Count <= 2)
+            var shortenedDetails = details.Select(d => {
+                int bracketPos = d.IndexOf(" (");
+                if (bracketPos > 0)
+                    return d.Substring(0, bracketPos);
+                return d;
+            }).ToList();
+
+           
+            if (shortenedDetails.Count <= 2)
             {
-                content = string.Join("; ", details);
+                content = string.Join("; ", shortenedDetails);
             }
-            
             else
             {
-               
-                var shortenedDetails = details.Take(2)
-                    .Select(d => {
-                        
-                        int bracketPos = d.IndexOf(" (");
-                        if (bracketPos > 0)
-                            return d.Substring(0, bracketPos);
-                        return d;
-                    })
-                    .ToList();
-
-                content = string.Join("; ", shortenedDetails);
+                content = string.Join("; ", shortenedDetails.Take(2));
                 content += $" và {details.Count - 2} chỉ số khác";
             }
 
-            return $"{classificationVietnamese}: {content}";
+            
+            return $"{classificationVietnamese}: {content}. Nhấn để xem chi tiết.";
         }
 
+        private string GetTitleFromDescription(string description)
+        {
+            if (string.IsNullOrEmpty(description))
+                return "Cảnh Báo";
+
+            if (description.Contains("NGUY HIỂM"))
+                return "🚨 Cảnh Báo Nghiêm Trọng";
+            else if (description.Contains("CẢNH BÁO"))
+                return "⚠️ Cảnh Báo";
+
+            return "ℹ️ Thông Báo";
+        }
 
     }
 }
