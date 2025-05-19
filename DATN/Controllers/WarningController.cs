@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace DATN.Controllers
@@ -664,7 +665,7 @@ namespace DATN.Controllers
                 return StatusCode(500, $"Lỗi khi kiểm tra người nhận thông báo: {ex.Message}");
             }
         }
-        [HttpGet("user-notifications")]
+        [HttpGet("mobile-user-notifications")]
         [Authorize]
         public async Task<IActionResult> GetUserNotifications([FromQuery] DateTime? since = null)
         {
@@ -676,7 +677,7 @@ namespace DATN.Controllers
                     return BadRequest("Invalid user identifier");
                 }
 
-                // Lấy các cảnh báo từ khoảng thời gian
+                
                 var query = _context.Warnings
                     .Where(w => w.UserId == userId && w.IsActive);
 
@@ -686,7 +687,6 @@ namespace DATN.Controllers
                 }
                 else
                 {
-                    // Mặc định lấy 7 ngày
                     query = query.Where(w => w.CreatedAt >= DateTime.Now.AddDays(-7));
                 }
 
@@ -696,7 +696,8 @@ namespace DATN.Controllers
                     {
                         id = w.WarningId.ToString(),
                         title = GetTitleFromDescription(w.Description),
-                        message = w.Description,
+                        message = ExtractPlainTextFromHtml(w.Description),
+                        fullHtmlContent = w.Description,
                         type = w.Description.Contains("NGUY HIỂM") ? "warning" :
                                w.Description.Contains("CẢNH BÁO") ? "risk" : "normal",
                         timestamp = w.CreatedAt.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
@@ -807,7 +808,7 @@ namespace DATN.Controllers
             return $"{classificationVietnamese}: {content}. Nhấn để xem chi tiết.";
         }
 
-        private string GetTitleFromDescription(string description)
+        private static string GetTitleFromDescription(string description)
         {
             if (string.IsNullOrEmpty(description))
                 return "Cảnh Báo";
@@ -819,6 +820,111 @@ namespace DATN.Controllers
 
             return "ℹ️ Thông Báo";
         }
+        public static string ExtractPlainTextFromHtml(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return string.Empty;
 
+            try
+            {
+                
+                string classification = "Thông báo";
+                if (html.Contains("NGUY HIỂM"))
+                    classification = "NGUY HIỂM";
+                else if (html.Contains("CẢNH BÁO"))
+                    classification = "CẢNH BÁO";
+                else if (html.Contains("BÌNH THƯỜNG"))
+                    classification = "BÌNH THƯỜNG";
+
+                
+                string detectionTime = string.Empty;
+                var timeMatch = Regex.Match(html, @"Thời gian phát hiện: ([0-9]{2}/[0-9]{2}/[0-9]{4} [0-9]{2}:[0-9]{2})");
+                if (timeMatch.Success)
+                    detectionTime = timeMatch.Groups[1].Value;
+
+                
+                var measurements = new List<string>();
+
+               
+                var tempMatch = Regex.Match(html, @"Nhiệt độ: ([\d\.]+)°C");
+                if (tempMatch.Success)
+                    measurements.Add($"Nhiệt độ: {tempMatch.Groups[1].Value}°C");
+
+               
+                var sysMatch = Regex.Match(html, @"Huyết áp tâm thu: ([\d\.]+) mmHg");
+                if (sysMatch.Success)
+                    measurements.Add($"Huyết áp tâm thu: {sysMatch.Groups[1].Value} mmHg");
+
+                
+                var diaMatch = Regex.Match(html, @"Huyết áp tâm trương: ([\d\.]+) mmHg");
+                if (diaMatch.Success)
+                    measurements.Add($"Huyết áp tâm trương: {diaMatch.Groups[1].Value} mmHg");
+
+                
+                var hrMatch = Regex.Match(html, @"Nhịp tim: ([\d\.]+) bpm");
+                if (hrMatch.Success)
+                    measurements.Add($"Nhịp tim: {hrMatch.Groups[1].Value} bpm");
+
+                
+                var spo2Match = Regex.Match(html, @"SPO2: ([\d\.]+)%");
+                if (spo2Match.Success)
+                    measurements.Add($"SPO2: {spo2Match.Groups[1].Value}%");
+
+                
+                var phMatch = Regex.Match(html, @"Độ pH máu: ([\d\.]+)");
+                if (phMatch.Success)
+                    measurements.Add($"pH máu: {phMatch.Groups[1].Value}");
+
+                
+                string locationInfo = string.Empty;
+                var locationMatch = Regex.Match(html, @"https://www\.openstreetmap\.org/\?mlat=([\d\.]+)&mlon=([\d\.]+)");
+                if (locationMatch.Success)
+                    locationInfo = $"Vị trí: {locationMatch.Groups[1].Value}, {locationMatch.Groups[2].Value}";
+
+              
+                var result = new System.Text.StringBuilder();
+                result.Append($"{classification}: ");
+
+              
+                if (measurements.Count == 0)
+                {
+                    result.Append("Kiểm tra sức khỏe của bạn");
+                }
+                else if (measurements.Count <= 2)
+                {
+                    result.Append(string.Join("; ", measurements));
+                }
+                else
+                {
+                    
+                    var shortMeasurements = measurements.Select(m =>
+                    {
+                        
+                        var parts = m.Split(':');
+                        if (parts.Length >= 2)
+                        {
+                            
+                            var valueMatch = Regex.Match(parts[1], @"([\d\.]+)");
+                            if (valueMatch.Success)
+                                return $"{parts[0].Trim()}: {valueMatch.Groups[1].Value}";
+                        }
+                        return m;
+                    }).ToList();
+
+                    result.Append(string.Join("; ", shortMeasurements.Take(2)));
+                    result.Append($" và {measurements.Count - 2} chỉ số khác");
+                }
+
+                
+                result.Append(". Nhấn để xem chi tiết.");
+
+                return result.ToString();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error extracting plain text: {ex.Message}");
+                return "Có cảnh báo sức khỏe mới. Nhấn để xem chi tiết.";
+            }
+        }
     }
 }
