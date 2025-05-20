@@ -22,7 +22,7 @@ namespace DATN.Controllers
 		}
 
 		[HttpPost("medicaldata")]
-                [Authorize]
+            [Authorize]
 
         public async Task<IActionResult> AddMedicalData([FromBody]MedicalDataDTO medicalData)
 		{
@@ -51,7 +51,7 @@ namespace DATN.Controllers
 
 
 		[HttpGet("daily/{date}/{deviceId}")]
-                [Authorize]
+        [Authorize]
 
         public async Task<IActionResult> GetDataByDate(DateTime date,int deviceId)
 		{
@@ -66,7 +66,7 @@ namespace DATN.Controllers
 		}
 
 		[HttpGet("average-last-14-days/{deviceId}")]
-                [Authorize]
+        [Authorize]
 
         public async Task<IActionResult> GetAverageLast14Days(int deviceId)
 		{
@@ -138,7 +138,7 @@ namespace DATN.Controllers
 
 
 		[HttpGet("average-daily-night-last-14-days/{deviceId}")]
-        // [Authorize]
+        [Authorize]
         public async Task<IActionResult> GetDailyNightAverageLast14Days(int deviceId)
 		{
 			var currentDate = DateTime.Now.Date;

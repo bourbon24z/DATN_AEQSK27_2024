@@ -439,7 +439,7 @@ namespace DATN.Controllers
 
         //get warning for user
         [HttpGet("my-warnings")]
-        [Authorize(Roles = "user")]
+        [Authorize]
         //http://localhost:5062/api/Warning/my-warnings
         public async Task<IActionResult> GetMyWarnings(
             [FromQuery] DateTime? startDate = null,

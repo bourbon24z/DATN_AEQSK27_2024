@@ -18,7 +18,7 @@ namespace DATN.Controllers
 			_context = context;
 		}
 		[HttpPost("add-clinical-indicator")]
-		[Authorize(Roles = "user")]
+		[Authorize]
 		public async Task<IActionResult> AddClinicalIndicator([FromBody] ClinicalIndicatorDTO clinicalIndicatorDTO)
 		{
 			if (clinicalIndicatorDTO == null)
@@ -147,7 +147,7 @@ namespace DATN.Controllers
 			});
 		}
 		[HttpGet("get-percent-indicator-is-true")]
-        // [Authorize(Roles = "admin,doctor")]
+        [Authorize]
         public async Task<IActionResult> GetPercentIndicatorIsTrue(int userId)
 		{
 			var clinicalIndicator = await _context.ClinicalIndicators.FirstOrDefaultAsync(x => x.UserID == userId && x.IsActived == true);
