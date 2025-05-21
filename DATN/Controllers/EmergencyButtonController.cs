@@ -127,9 +127,10 @@ namespace DATN.Controllers
                 string locationLink = $"{Request.Scheme}://{Request.Host}/emergency-location/{gps.GpsId}";
                 string openStreetMapLink = $"https://www.openstreetmap.org/#map=16/{request.Latitude}/{request.Longitude}";
 
-                string formattedDescription = $"🚨 THÔNG BÁO KHẨN CẤP! 🚨\n\n" +
+                string formattedDescription = 
+                    $"🚨 THÔNG BÁO KHẨN CẤP! 🚨\n\n" +
                     $"Bệnh nhân {strokeUser.PatientName} vừa bấm nút khẩn cấp!\n\n" +
-                    $"Vui lòng liên hệ ngay 115, các cơ quan y tế gần nhất hoặc qua SỐ ĐIỆN THOẠI CỦA BỆNH NHÂN: {strokeUser.Phone}\n";
+                    $"Vui lòng liên hệ ngay 115, các cơ quan y tế gần nhất hoặc qua SỐ ĐIỆN THOẠI CỦA BỆNH NHÂN: {strokeUser.Phone}\n";      
 
                 if (!string.IsNullOrEmpty(strokeUser.Email))
                 {
@@ -168,41 +169,175 @@ namespace DATN.Controllers
                     );
                 }
 
-               
-                await _notificationService.SendWebNotificationAsync(
-                    userId,
-                    "🚨 CẢNH BÁO KHẨN CẤP!",
-                    formattedDescription,
-                    "emergency",
-                    false 
-                );
+                var doctorRelationships = await _context.Relationships
+             .Where(r => r.UserId == userId && r.RelationshipType == "doctor-patient")
+             .ToListAsync();
 
-               
-                await _patientNotificationService.SendNotificationToPatientCircleAsync(
-                    userId,
-                    "🚨 CẢNH BÁO KHẨN CẤP!",
-                    $"Bệnh nhân {strokeUser.PatientName} (ID: {userId}) vừa kích hoạt nút khẩn cấp! Vui lòng kiểm tra ngay.",
-                    "emergency"
-                );
+                var doctorIds = doctorRelationships.Select(r => r.InviterId).ToList();
 
                 
-                var additionalData = new Dictionary<string, string>
+                var familyRelationships = await _context.Relationships
+                    .Where(r => (r.UserId == userId || r.InviterId == userId) && r.RelationshipType == "family")
+                    .ToListAsync();
+
+                var familyIds = new List<int>();
+                foreach (var relationship in familyRelationships)
                 {
-                    { "warningId", warning.WarningId.ToString() },
-                    { "gpsId", gps.GpsId.ToString() },
-                    { "latitude", request.Latitude.ToString() },
-                    { "longitude", request.Longitude.ToString() },
-                    { "timestamp", DateTime.Now.ToString("o") },
-                    { "locationLink", locationLink },
-                    { "openStreetMapLink", openStreetMapLink }
-                };
+                    if (relationship.UserId == userId)
+                        familyIds.Add(relationship.InviterId);
+                    else
+                        familyIds.Add(relationship.UserId);
+                }
+
+                
+                foreach (var doctorId in doctorIds)
+                {
+                    try
+                    {
+                        var doctor = await _context.StrokeUsers.FindAsync(doctorId);
+                        if (doctor != null && !string.IsNullOrEmpty(doctor.Email))
+                        {
+                            string emailSubject = $"🚨 KHẨN CẤP: Bệnh nhân {strokeUser.PatientName} cần trợ giúp!";
+                            string emailBody = EmergencyNotificationHelper.CreateDoctorEmergencyEmail(
+                                strokeUser,
+                                locationLink,
+                                openStreetMapLink,
+                                request.AdditionalInfo
+                            );
+
+                            await _notificationService.SendNotificationAsync(
+                                doctor.Email,
+                                emailSubject,
+                                emailBody
+                            );
+
+                            _logger.LogInformation($"Đã gửi email khẩn cấp tới bác sĩ {doctor.PatientName} ({doctor.Email})");
+                        }
+
+                        
+                        await _notificationService.SendWebNotificationAsync(
+                            doctorId,
+                            "🚨 CẢNH BÁO KHẨN CẤP: Bệnh nhân cần trợ giúp!",
+                            $"Bệnh nhân {strokeUser.PatientName} vừa kích hoạt nút khẩn cấp! Vui lòng kiểm tra ngay.",
+                            "emergency",
+                            false
+                        );
+
+                        
+                        if (_mobileNotificationService != null)
+                        {
+                            var additionalData = new Dictionary<string, string>
+                    {
+                        { "warningId", warning.WarningId.ToString() },
+                        { "gpsId", gps.GpsId.ToString() },
+                        { "patientId", userId.ToString() },
+                        { "patientName", strokeUser.PatientName },
+                        { "latitude", request.Latitude.ToString() },
+                        { "longitude", request.Longitude.ToString() },
+                        { "timestamp", DateTime.Now.ToString("o") },
+                        { "locationLink", locationLink },
+                        { "openStreetMapLink", openStreetMapLink }
+                    };
+
+                            await _mobileNotificationService.SendNotificationToUserAsync(
+                                doctorId,
+                                "🚨 CẢNH BÁO KHẨN CẤP!",
+                                $"Bệnh nhân {strokeUser.PatientName} cần trợ giúp khẩn cấp!",
+                                "emergency",
+                                additionalData
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Lỗi gửi thông báo khẩn cấp cho bác sĩ ID {doctorId}");
+                    }
+                }
+
+                
+                foreach (var familyId in familyIds)
+                {
+                    try
+                    {
+                        var familyMember = await _context.StrokeUsers.FindAsync(familyId);
+                        if (familyMember != null && !string.IsNullOrEmpty(familyMember.Email))
+                        {
+                            string emailSubject = $"🚨 KHẨN CẤP: Người thân {strokeUser.PatientName} cần trợ giúp!";
+                            string emailBody = EmergencyNotificationHelper.CreateFamilyEmergencyEmail(
+                                strokeUser,
+                                familyMember,
+                                locationLink,
+                                openStreetMapLink,
+                                request.AdditionalInfo
+                            );
+
+                            await _notificationService.SendNotificationAsync(
+                                familyMember.Email,
+                                emailSubject,
+                                emailBody
+                            );
+
+                            _logger.LogInformation($"Đã gửi email khẩn cấp tới người thân {familyMember.PatientName} ({familyMember.Email})");
+                        }
+
+                        
+                        await _notificationService.SendWebNotificationAsync(
+                            familyId,
+                            "🚨 CẢNH BÁO KHẨN CẤP: Người thân cần trợ giúp!",
+                            $"Người thân {strokeUser.PatientName} vừa kích hoạt nút khẩn cấp! Vui lòng kiểm tra ngay.",
+                            "emergency",
+                            false
+                        );
+
+                        
+                        if (_mobileNotificationService != null)
+                        {
+                            var additionalData = new Dictionary<string, string>
+                    {
+                        { "warningId", warning.WarningId.ToString() },
+                        { "gpsId", gps.GpsId.ToString() },
+                        { "patientId", userId.ToString() },
+                        { "patientName", strokeUser.PatientName },
+                        { "latitude", request.Latitude.ToString() },
+                        { "longitude", request.Longitude.ToString() },
+                        { "timestamp", DateTime.Now.ToString("o") },
+                        { "locationLink", locationLink },
+                        { "openStreetMapLink", openStreetMapLink }
+                    };
+
+                            await _mobileNotificationService.SendNotificationToUserAsync(
+                                familyId,
+                                "🚨 CẢNH BÁO KHẨN CẤP!",
+                                $"Người thân {strokeUser.PatientName} cần trợ giúp khẩn cấp!",
+                                "emergency",
+                                additionalData
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Lỗi gửi thông báo khẩn cấp cho người thân ID {familyId}");
+                    }
+                }
+
+                // Gửi thông báo mobile cho bệnh nhân
+                var patientAdditionalData = new Dictionary<string, string>
+        {
+            { "warningId", warning.WarningId.ToString() },
+            { "gpsId", gps.GpsId.ToString() },
+            { "latitude", request.Latitude.ToString() },
+            { "longitude", request.Longitude.ToString() },
+            { "timestamp", DateTime.Now.ToString("o") },
+            { "locationLink", locationLink },
+            { "openStreetMapLink", openStreetMapLink }
+        };
 
                 await _mobileNotificationService.SendNotificationToUserAsync(
                     userId,
                     "🚨 CẢNH BÁO KHẨN CẤP!",
-                    $"Bệnh nhân {strokeUser.PatientName} cần trợ giúp khẩn cấp!",
+                    $"Bạn đã kích hoạt nút khẩn cấp thành công. Bác sĩ và người thân đã được thông báo.",
                     "emergency",
-                    additionalData
+                    patientAdditionalData
                 );
 
                 return Ok(new
