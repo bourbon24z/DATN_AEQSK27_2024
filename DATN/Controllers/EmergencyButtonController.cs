@@ -125,7 +125,7 @@ namespace DATN.Controllers
 
                
                 string locationLink = $"{Request.Scheme}://{Request.Host}/emergency-location/{gps.GpsId}";
-                string openStreetMapLink = $"https://www.openstreetmap.org/#map=16/{request.Latitude}/{request.Longitude}";
+                string openStreetMapLink = $"https://www.openstreetmap.org/?mlat={request.Latitude}&mlon={request.Longitude}#map=16/{request.Latitude}/{request.Longitude}";
 
                 string formattedDescription = 
                     $"🚨 THÔNG BÁO KHẨN CẤP! 🚨\n\n" +
@@ -159,13 +159,21 @@ namespace DATN.Controllers
                 _context.Warnings.Add(warning);
                 await _context.SaveChangesAsync();
 
-                
+
                 if (!string.IsNullOrEmpty(strokeUser.Email))
                 {
+                    string userEmailBody = EmergencyNotificationHelper.CreateUserEmergencyEmail(
+                        strokeUser,
+                        locationLink,
+                        request.Latitude,
+                        request.Longitude,
+                        request.AdditionalInfo
+                    );
+
                     await _notificationService.SendNotificationAsync(
                         strokeUser.Email,
                         "🚨 CẢNH BÁO KHẨN CẤP!",
-                        formattedDescription
+                        userEmailBody
                     );
                 }
 
@@ -201,7 +209,8 @@ namespace DATN.Controllers
                             string emailBody = EmergencyNotificationHelper.CreateDoctorEmergencyEmail(
                                 strokeUser,
                                 locationLink,
-                                openStreetMapLink,
+                                request.Latitude,
+                                request.Longitude,
                                 request.AdditionalInfo
                             );
 
@@ -267,7 +276,8 @@ namespace DATN.Controllers
                                 strokeUser,
                                 familyMember,
                                 locationLink,
-                                openStreetMapLink,
+                                request.Latitude,
+                                request.Longitude,
                                 request.AdditionalInfo
                             );
 
@@ -423,7 +433,7 @@ namespace DATN.Controllers
                     FormattedTime = gpsData.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss"),
                     Relationships = relationshipDtos,
                     WarningId = relatedWarning?.WarningId ?? 0,
-                    OpenStreetMapLink = $"https://www.openstreetmap.org/#map=16/{gpsData.Lat}/{gpsData.Lon}"
+                    OpenStreetMapLink = $"https://www.openstreetmap.org/?mlat={gpsData.Lat}&mlon={gpsData.Lon}#map=16/{gpsData.Lat}/{gpsData.Lon}"
                 };
 
                 return Ok(result);

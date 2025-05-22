@@ -50,10 +50,13 @@ namespace DATN.Services
             
             if (location != null &&
                 (Math.Abs(location.Lat) > 0.0001f || Math.Abs(location.Long) > 0.0001f))
+                
+
             {
+                string mapUrl = $"https://www.openstreetmap.org/?mlat={location.Lat}&mlon={location.Long}#map=16/{location.Lat}/{location.Long}";
                 sb.Append("<div style='margin-bottom: 12px;'>");
                 sb.Append("<div style='font-weight: bold; color: #ff0000;'>📍 VỊ TRÍ:</div>");
-                sb.Append($"<a href='https://www.openstreetmap.org/?mlat={location.Lat}&mlon={location.Long}&zoom=15' target='_blank' style='display: inline-block; background-color: #ff3b30; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 5px;'>");
+                sb.Append($"<a href='{mapUrl}' target='_blank' style='display: inline-block; background-color: #ff3b30; color: white !important; padding: 8px 15px; text-decoration: none !important; border-radius: 5px; font-weight: bold; margin-top: 5px;'>");
                 sb.Append("👉 XEM BẢN ĐỒ NGAY");
                 sb.Append("</a>");
                 sb.Append("</div>");
@@ -66,7 +69,7 @@ namespace DATN.Services
 
            
             sb.Append("<div style='text-align: center; margin-top: 15px;'>");
-            sb.Append("<a href='tel:115' style='display: inline-block; background-color: #ff3b30; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;'>");
+            sb.Append("<a href='tel:115' style='display: inline-block; background-color: #ff3b30; color: white !important; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-right: 10px;'>");
             sb.Append("📞 GỌI CẤP CỨU");
             sb.Append("</a>");
             sb.Append("</div>");

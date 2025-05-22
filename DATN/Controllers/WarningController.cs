@@ -224,80 +224,82 @@ namespace DATN.Controllers
                 );
                 Console.WriteLine($"[WarningController] Đã gửi thông báo web cho người dùng ID {deviceData.UserId}");
 
-                try
-                {
-                    
-                    var doctorRelationships = await _context.Relationships
-                        .Where(r => r.UserId == deviceData.UserId && r.RelationshipType == "doctor-patient")
-                        .ToListAsync();
-                    var doctorIds = doctorRelationships.Select(r => r.InviterId).ToList();
+                //try
+                //{
 
-                   
-                    var familyRelationships = await _context.Relationships
-                        .Where(r => (r.UserId == deviceData.UserId || r.InviterId == deviceData.UserId) &&
-                                   r.RelationshipType == "family")
-                        .ToListAsync();
-                    var familyIds = new List<int>();
-                    foreach (var relationship in familyRelationships)
-                    {
-                        if (relationship.UserId == deviceData.UserId)
-                            familyIds.Add(relationship.InviterId);
-                        else
-                            familyIds.Add(relationship.UserId);
-                    }
-
-                  
-                    foreach (var doctorId in doctorIds)
-                    {
-                        var doctor = await _context.StrokeUsers.FindAsync(doctorId);
-                        if (doctor != null && !string.IsNullOrEmpty(doctor.Email))
-                        {
-                            string emailSubject = $"{(classification == "WARNING" ? "⚠️ NGUY HIỂM" : "⚠️ CẢNH BÁO")}: Bệnh nhân {strokeUser.PatientName}";
-                            string emailBody = HealthNotificationHelper.CreateHealthWarningEmail(
-                                strokeUser,
-                                doctor,
-                                classification == "WARNING" ? "⚠️ CẢNH BÁO MỨC ĐỘ NGUY HIỂM" : "⚠️ CẢNH BÁO SỨC KHỎE",
-                                detailsList,
-                                classification.ToLower()
-                            );
-
-                            await _notificationService.SendNotificationAsync(doctor.Email, emailSubject, emailBody);
-                            Console.WriteLine($"[WarningController] Đã gửi email cảnh báo đến bác sĩ {doctor.PatientName} ({doctor.Email})");
-                        }
-                    }
-
-                   
-                    foreach (var familyId in familyIds)
-                    {
-                        var familyMember = await _context.StrokeUsers.FindAsync(familyId);
-                        if (familyMember != null && !string.IsNullOrEmpty(familyMember.Email))
-                        {
-                            string emailSubject = $"{(classification == "WARNING" ? "⚠️ NGUY HIỂM" : "⚠️ CẢNH BÁO")}: Người thân {strokeUser.PatientName}";
-                            string emailBody = HealthNotificationHelper.CreateHealthWarningEmail(
-                                strokeUser,
-                                familyMember,
-                                classification == "WARNING" ? "⚠️ CẢNH BÁO MỨC ĐỘ NGUY HIỂM" : "⚠️ CẢNH BÁO SỨC KHỎE",
-                                detailsList,
-                                classification.ToLower()
-                            );
-
-                            await _notificationService.SendNotificationAsync(familyMember.Email, emailSubject, emailBody);
-                            Console.WriteLine($"[WarningController] Đã gửi email cảnh báo đến người thân {familyMember.PatientName} ({familyMember.Email})");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"[WarningController] Lỗi khi gửi email cảnh báo trực tiếp: {ex.Message}");
-                }
+                //    var doctorRelationships = await _context.Relationships
+                //        .Where(r => r.UserId == deviceData.UserId && r.RelationshipType == "doctor-patient")
+                //        .ToListAsync();
+                //    var doctorIds = doctorRelationships.Select(r => r.InviterId).ToList();
 
 
-                await _patientNotificationService.SendNotificationToPatientCircleAsync(
+                //    var familyRelationships = await _context.Relationships
+                //        .Where(r => (r.UserId == deviceData.UserId || r.InviterId == deviceData.UserId) &&
+                //                   r.RelationshipType == "family")
+                //        .ToListAsync();
+                //    var familyIds = new List<int>();
+                //    foreach (var relationship in familyRelationships)
+                //    {
+                //        if (relationship.UserId == deviceData.UserId)
+                //            familyIds.Add(relationship.InviterId);
+                //        else
+                //            familyIds.Add(relationship.UserId);
+                //    }
+
+
+                    //    foreach (var doctorId in doctorIds)
+                    //    {
+                    //        var doctor = await _context.StrokeUsers.FindAsync(doctorId);
+                    //        if (doctor != null && !string.IsNullOrEmpty(doctor.Email))
+                    //        {
+                    //            string emailSubject = $"{(classification == "WARNING" ? "⚠️ NGUY HIỂM" : "⚠️ CẢNH BÁO")}: Bệnh nhân {strokeUser.PatientName}";
+                    //            string emailBody = HealthNotificationHelper.CreateHealthWarningEmail(
+                    //                strokeUser,
+                    //                doctor,
+                    //                classification == "WARNING" ? "⚠️ CẢNH BÁO MỨC ĐỘ NGUY HIỂM" : "⚠️ CẢNH BÁO SỨC KHỎE",
+                    //                detailsList,
+                    //                classification.ToLower()
+                    //            );
+
+                    //            await _notificationService.SendNotificationAsync(doctor.Email, emailSubject, emailBody);
+                    //            Console.WriteLine($"[WarningController] Đã gửi email cảnh báo đến bác sĩ {doctor.PatientName} ({doctor.Email})");
+                    //        }
+                    //    }
+
+
+            //        foreach (var familyId in familyIds)
+            //    {
+            //        var familyMember = await _context.StrokeUsers.FindAsync(familyId);
+            //        if (familyMember != null && !string.IsNullOrEmpty(familyMember.Email))
+            //        {
+            //            string emailSubject = $"{(classification == "WARNING" ? "⚠️ NGUY HIỂM" : "⚠️ CẢNH BÁO")}: Người thân {strokeUser.PatientName}";
+            //            string emailBody = HealthNotificationHelper.CreateHealthWarningEmail(
+            //                strokeUser,
+            //                familyMember,
+            //                classification == "WARNING" ? "⚠️ CẢNH BÁO MỨC ĐỘ NGUY HIỂM" : "⚠️ CẢNH BÁO SỨC KHỎE",
+            //                detailsList,
+            //                classification.ToLower()
+            //            );
+
+            //            await _notificationService.SendNotificationAsync(familyMember.Email, emailSubject, emailBody);
+            //            Console.WriteLine($"[WarningController] Đã gửi email cảnh báo đến người thân {familyMember.PatientName} ({familyMember.Email})");
+            //        }
+            //    }
+            //}
+            //    catch (Exception ex)
+            //    {
+            //    Console.WriteLine($"[WarningController] Lỗi khi gửi email cảnh báo trực tiếp: {ex.Message}");
+            //}
+
+
+            await _patientNotificationService.SendNotificationToPatientCircleAsync(
                     deviceData.UserId,
                     classification == "WARNING" ? "Cảnh Báo Sức Khỏe Bệnh Nhân" : "Cảnh Báo Sức Khỏe",
                     $"Bệnh nhân {strokeUser.PatientName} (ID: {deviceData.UserId}) có chỉ số bất thường: {details}",
                     classification.ToLower(),
-                    detailsList
+                    detailsList,
+                    hasGps ? deviceData.GPS.Lat : null,  
+                    hasGps ? deviceData.GPS.Long : null
                 );
 
                 // send mobile notification
@@ -512,7 +514,8 @@ namespace DATN.Controllers
         //http://localhost:5062/api/Warning/my-warnings
         public async Task<IActionResult> GetMyWarnings(
             [FromQuery] DateTime? startDate = null,
-            [FromQuery] DateTime? endDate = null)
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] bool? isActive = null)
         {
             try
             {
@@ -523,9 +526,11 @@ namespace DATN.Controllers
                 }
 
                 var query = _context.Warnings
-                    .Where(w => w.UserId == userId && w.IsActive);
+                    .Where(w => w.UserId == userId);
 
-                
+                if (isActive.HasValue)
+                    query = query.Where(w => w.IsActive == isActive.HasValue);
+
                 if (startDate.HasValue)
                     query = query.Where(w => w.CreatedAt >= startDate.Value);
 
@@ -540,6 +545,7 @@ namespace DATN.Controllers
                         w.WarningId,
                         w.Description,
                         w.CreatedAt,
+                        w.IsActive,
                         FormattedTimestamp = w.CreatedAt.ToString("dd/MM/yyyy HH:mm:ss")
                     })
                     .ToListAsync();

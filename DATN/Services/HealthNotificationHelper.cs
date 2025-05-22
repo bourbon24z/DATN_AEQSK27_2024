@@ -37,7 +37,7 @@ namespace DATN.Services
         .warning-header {{ background-color: {headerBgColor}; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 20px; border-radius: 5px; }}
         .patient-info {{ background-color: {bgColor}; border-left: 5px solid {borderColor}; padding: 15px; margin-bottom: 20px; }}
         .readings-list {{ background-color: #f8f8f8; padding: 15px; margin-bottom: 20px; border-radius: 5px; }}
-        .action-button {{ display: inline-block; background-color: #0066cc; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 10px; }}
+        .action-button {{ display: inline-block; background-color: #0066cc; color: white !important; padding: 10px 15px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 10px; }}
         .timestamp {{ font-size: 12px; color: #666; text-align: right; margin-top: 20px; }}
     </style>
 </head>

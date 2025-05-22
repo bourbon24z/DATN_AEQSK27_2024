@@ -23,7 +23,7 @@ public class EmailService
         }
 
         var emailMessage = new MimeMessage();
-        emailMessage.From.Add(new MailboxAddress("Huy Nguyen Cute Pho Mai Que Nhat The Gioi", _configuration["Smtp:Username"]));
+        emailMessage.From.Add(new MailboxAddress("From System StrokeAI", _configuration["Smtp:Username"]));
         emailMessage.To.Add(new MailboxAddress(email, email));
         emailMessage.Subject = subject;
         emailMessage.Body = new TextPart("html") { Text = message };

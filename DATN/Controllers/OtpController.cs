@@ -71,11 +71,11 @@ public class OtpController : ControllerBase
 
         await _emailService.SendEmailAsync(
                 dbUser.Email,
-                "OTP đây ní ơi",
-                $"Gửi ní {dbUser.PatientName},\n\n" +
-                $"Otp của ní: {otp}. 15 phút thôi ní nghe.\n\n" +
-                "NÍ không gửi thì bỏ qua hoặc đổi mật khẩu đê.\n\n" +
-                "Trân trọng,\nFrom Huy Nguyễn Cute With Love."
+                "OTP của bạn",
+                $"{dbUser.PatientName},\n\n" +
+                $"Otp: {otp} có hiệu lực trong 15 phút.\n\n" +
+                "Nếu không phải bạn gửi thì bỏ qua hoặc đổi mật khẩu.\n\n" +
+                "Trân trọng,\nFrom StrokeAi."
 );
 
 
