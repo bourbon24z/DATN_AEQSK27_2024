@@ -22,7 +22,8 @@ namespace DATN.Controllers
         [HttpPost("add-device")]
         public async Task<IActionResult> AddDevice([FromBody] deviceDTO device)
         {
-            try {
+            try
+            {
                 var userId = device.UserId;
                 var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
                 if (user == null)
@@ -30,7 +31,7 @@ namespace DATN.Controllers
                     return NotFound("User not found");
                 }
                 var existingDevice = await _context.Device
-                        .FirstOrDefaultAsync(d => d.Series == device.Series && d.UserId == userId);
+                        .FirstOrDefaultAsync(d => d.UserId == userId);
                 if (existingDevice != null)
                 {
                     existingDevice.DeviceName = device.DeviceName;
@@ -61,46 +62,17 @@ namespace DATN.Controllers
                 }
                 else
                 {
-                    var activeDevices = await _context.Device
-                .Where(d => d.UserId == userId && !d.IsLocked && d.Series != device.Series)
-                .ToListAsync();
-
-                    int lockedCount = 0;
-
-                    if (activeDevices.Any())
-                    {
-                        foreach (var oldDevice in activeDevices)
-                        {
-                            oldDevice.IsLocked = true;
-                            oldDevice.UpdatedAt = DateTime.Now;
-                            lockedCount++;
-                        }
-                        await _context.SaveChangesAsync();
-                    }
-
-                    var existingDevices = await _context.Device
-                        .Where(d => d.UserId == userId && d.Series != device.Series)
-                        .ToListAsync();
-                    if (existingDevices.Any())
-                    {
-                        foreach (var oldDevice in existingDevices)
-                        {
-                            oldDevice.IsLocked = true;
-                            oldDevice.UpdatedAt = DateTime.Now;
-                        }
-                        
-                    }
-
                     var newDevice = new Device
                     {
-                        UserId = userId,
+                        UserId = device.UserId,
                         DeviceName = device.DeviceName,
                         DeviceType = device.DeviceType,
                         Series = device.Series,
                         IsLocked = false,
-                        CreatedAt = DateTime.Now
+                        CreatedAt = DateTime.Now,
+                        UpdatedAt = DateTime.Now
                     };
-                    _context.Device.Add(newDevice);
+                    await _context.Device.AddAsync(newDevice);
                     await _context.SaveChangesAsync();
                     var responseDTO = new deviceDTO
                     {
@@ -113,15 +85,11 @@ namespace DATN.Controllers
                         CreatedAt = newDevice.CreatedAt,
                         UpdatedAt = newDevice.UpdatedAt
                     };
-
                     return Ok(new
                     {
-                        message = lockedCount > 0
-                                                ? $"Device added successfully. {lockedCount} existing active device(s) have been locked."
-                                                : "Device added successfully",
+                        message = "Device added successfully",
                         device = responseDTO,
-                        isNew = true,
-                        lockedDevices = lockedCount
+                        isNew = true
                     });
                 }
             }
@@ -134,7 +102,8 @@ namespace DATN.Controllers
         [HttpGet("get-devices/{userId}")]
         public async Task<IActionResult> GetDevices(int userId)
         {
-            try {
+            try
+            {
                 var user = await _context.StrokeUsers.FirstOrDefaultAsync(u => u.UserId == userId);
                 if (user == null)
                 {
@@ -225,7 +194,7 @@ namespace DATN.Controllers
                     return NotFound("User not found");
                 }
 
-                
+
                 var devices = await _context.Device
                     .Where(d => d.UserId == userId)
                     .Select(d => new {
@@ -253,28 +222,25 @@ namespace DATN.Controllers
                 return StatusCode(500, new { message = $"An error occurred: {ex.Message}" });
             }
         }
-            [HttpDelete("delete-devices/{deviceId}")]
-            public async Task<IActionResult> DeleteDevice(int deviceId)
+        [HttpDelete("delete-devices/{deviceId}")]
+        public async Task<IActionResult> DeleteDevice(int deviceId)
+        {
+            var device = await _context.Device.FindAsync(deviceId);
+            if (device == null)
             {
-                var device = await _context.Device.FindAsync(deviceId);
-                if (device == null)
-                {
-                    return NotFound("Device not found");
-                }
-                var userMedicalDatas = await _context.UserMedicalDatas
-                    .Where(umd => umd.DeviceId == deviceId)
-                    .ToListAsync();
-                if (userMedicalDatas != null && userMedicalDatas.Count > 0)
-                {
-                    foreach (var umd in userMedicalDatas)
-                    {
-                        _context.UserMedicalDatas.Remove(umd);
-                    }
-                }
-                _context.Device.Remove(device);
-                await _context.SaveChangesAsync();
-                return Ok("Device deleted successfully");
+                return NotFound("Device not found");
             }
-
+            else
+            {
+                device.IsLocked = true;
+                device.UpdatedAt = DateTime.Now;
+                await _context.SaveChangesAsync();
+                // Optionally, you can also remove the device from the database
+                // _context.Device.Remove(device);
+                // await _context.SaveChangesAsync();
+            }
+            return Ok("Device deleted successfully");
         }
+
     }
+}
