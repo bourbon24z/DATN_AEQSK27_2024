@@ -28,8 +28,8 @@ namespace DATN.Helper
 		{
 			var percentAverageMedicalData = new PercentAverageMedicalData
 			{
-				Temperature = Math.Abs((float)((averageMedicalData.Temperature - 36) / 36.0 * 100)),
-				SpO2 = Math.Abs((float)((averageMedicalData.SpO2 - 95) / 95.0 * 100)),
+				Temperature = Math.Abs((float)((averageMedicalData.Temperature - 37) / 37.0 * 100)),
+				SpO2 = ((float)((averageMedicalData.SpO2 - 95) / 95.0 * 100)),
 				HeartRate = Math.Abs((float)((averageMedicalData.HeartRate - 75) / 75.0 * 100)),
 				BloodPh = Math.Abs((float)((averageMedicalData.BloodPh - 7.4) / 7.4 * 100)),
 				SystolicPressure = Math.Abs((float)((averageMedicalData.SystolicPressure - 120) / 120.0 * 100)),

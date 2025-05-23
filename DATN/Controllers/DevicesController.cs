@@ -38,6 +38,7 @@ namespace DATN.Controllers
                     existingDevice.DeviceType = device.DeviceType;
                     existingDevice.IsLocked = false;
                     existingDevice.UpdatedAt = DateTime.Now;
+                    existingDevice.Series = device.Series;
 
                     await _context.SaveChangesAsync();
 
