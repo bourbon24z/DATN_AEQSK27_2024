@@ -1,3 +1,6 @@
+Tuổi trẻ không dài, nhưng thật may mắn vì trong những năm tháng ngắn ngủi đó, tôi đã có những người bạn chân thành bên cạnh. Chúng ta đã cùng ngồi ở giảng đường, cùng lo lắng vì deadline, cùng tranh cãi bên những trang Word, PowerPoint và cả những dòng code chằng chịt.
+Giờ thì, tất cả đã xong. Khóa luận khép lại, nhưng tình bạn vẫn mở ra, như một chương sách khác, dài hơn, sâu hơn, và bền hơn. Khóa luận chỉ là một dấu mốc. Ký ức về nhau, là điều sẽ còn mãi, ở lại trong lòng, như một phần tuổi trẻ không thể thay thế.
+
 # 📱 Hướng Dẫn Cho Từng Nền Tảng
 
 | Platform       | Instructions |
